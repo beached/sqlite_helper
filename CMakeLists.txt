@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 3.3 )
+cmake_minimum_required( VERSION 3.2 )
 
 project( sqlite_helper_prj )
 
@@ -8,7 +8,7 @@ find_package( Boost 1.59.0 COMPONENTS system filesystem regex unit_test_framewor
 find_package( OpenSSL REQUIRED )
 
 if( ${CMAKE_CXX_COMPILER_ID} STREQUAL 'MSVC' )
-	add_compile_options( $<$<COMPILE_LANGUAGE:CXX>: -D_WIN32_WINNT=0x0601> )
+	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32_WINNT=0x0601" )
 else( )
 	find_package( Threads REQUIRED )
 	if( THREADS_HAVE_PTHREAD_ARG )
@@ -16,9 +16,9 @@ else( )
 	endif( )
 
 	if( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
-		add_compile_options( $<$<COMPILE_LANGUAGE:CXX>:-std=c++14 -stdlib=libc++ -Weverything -Wno-c++98-compat -Wfatal-errors -Wno-covered-switch-default -Wno-padded -Wno-exit-time-destructors -Wno-c++98-compat-pedantic -Wno-unused-parameter -Wno-missing-noreturn -Wno-missing-prototypes -Wno-disabled-macro-expansion> )
+		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -stdlib=libc++ -Weverything -Wno-c++98-compat -Wfatal-errors -Wno-covered-switch-default -Wno-padded -Wno-exit-time-destructors -Wno-c++98-compat-pedantic -Wno-unused-parameter -Wno-missing-noreturn -Wno-missing-prototypes -Wno-disabled-macro-expansion" )
 	elseif( ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )
-		add_compile_options( $<$<COMPILE_LANGUAGE:CXX>:-std=c++14 -Wall -Wno-deprecated-declarations> )
+		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wno-deprecated-declarations" )
 	endif( )
 endif( )
 
