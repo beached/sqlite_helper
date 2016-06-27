@@ -78,7 +78,7 @@ include_directories( SYSTEM ${Boost_INCLUDE_DIRS} )
 
 add_library( sqlite_helper STATIC ${HEADER_FILES} ${SOURCE_FILES} )
 add_dependencies( sqlite_helper header_libraries_prj char_range_prj lib_nodepp_prj )
-target_link_libraries( sqlite_helper sqlite3 char_range lib_nodepp ${Boost_LIBRARIES} )
+target_link_libraries( sqlite_helper sqlite3_static char_range lib_nodepp ${Boost_LIBRARIES} )
 
 install( TARGETS sqlite_helper DESTINATION lib )
 install( FILES ${CMAKE_BINARY_DIR}/sqlite3/libsqlite3.so DESTINATION lib )
