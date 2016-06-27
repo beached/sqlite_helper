@@ -81,5 +81,7 @@ add_dependencies( sqlite_helper header_libraries_prj char_range_prj lib_nodepp_p
 target_link_libraries( sqlite_helper char_range lib_nodepp ${Boost_LIBRARIES} )
 
 install( TARGETS sqlite_helper DESTINATION lib )
+install( FILES sqlite3/libsqlite3.so DESTINATION lib )
+install( FILES sqlite3/libsqlite3_static.a DESTINATION lib )
 install( DIRECTORY ${HEADER_FOLDER}/ DESTINATION include/daw/sqlite_helper )
 
