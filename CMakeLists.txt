@@ -28,7 +28,7 @@ externalproject_add(
     GIT_TAG "master"
     SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/nodepp"
 	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/install
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/inst
     PATCH_COMMAND ""
     TEST_COMMAND ""
 )
@@ -39,7 +39,7 @@ externalproject_add(
     GIT_TAG "master"
     SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/headlibs"
 	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/install
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/inst
     PATCH_COMMAND ""
     TEST_COMMAND ""
 )
@@ -50,7 +50,7 @@ externalproject_add(
     GIT_TAG "master"
     SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/chrrng"
 	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/install
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/inst
     PATCH_COMMAND ""
     TEST_COMMAND ""
 )
@@ -70,9 +70,9 @@ set( SOURCE_FILES
 add_subdirectory( ./sqlite3 )
 include_directories( ./sqlite3/src )
 
-include_directories( SYSTEM "${CMAKE_BINARY_DIR}/install/include" )
+include_directories( SYSTEM "${CMAKE_BINARY_DIR}/inst/include" )
 include_directories( SYSTEM ${Boost_INCLUDE_DIRS} )
-link_directories( "${CMAKE_BINARY_DIR}/install/lib" )
+link_directories( "${CMAKE_BINARY_DIR}/inst/lib" )
 include_directories( "./include" )
 
 
