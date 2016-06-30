@@ -24,7 +24,7 @@
 
 #include <boost/utility/string_ref.hpp>
 #include <string>
-#include "sqlite_helper.h"
+#include <sstream>
 
 namespace daw {
 	namespace db {
@@ -32,18 +32,18 @@ namespace daw {
 		struct kv_store {
 			kv_store( boost::string_ref filename );
 			virtual ~kv_store( );
-			std::string get( size_t hash );
+			std::string operator( )( size_t hash );
 
-			template<typename Key>
+			template<typename Key, typename std::enable_if_t<!std::is_same<size_t, Key>::value > >
 			std::string operator( )( Key key ) {
 				static std::hash<Key> const hash;
 				return get( hash( key ) );
 			}
 
-			template<typename Key, typename Value, typename !>
+			template<typename Key, typename Value, typename std::enable_if_t<!std::is_same<std::string, Value>::value > >
 			Value operator( )( Key key ) const {
 				std::stringstream ss;
-				auto tmp = get( hash( item ) );
+				auto tmp = et( hash( key ) );
 				ss << tmp;
 				Value result;
 				ss >> result;

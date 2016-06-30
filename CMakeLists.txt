@@ -23,11 +23,22 @@ else( )
 endif( )
 
 externalproject_add(
+    lib_nodepp_prj
+    GIT_REPOSITORY "https://github.com/beached/lib_nodepp.git"
+    GIT_TAG "master"
+    SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/nodepp"
+	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/install
+    PATCH_COMMAND ""
+    TEST_COMMAND ""
+)
+
+externalproject_add(
     header_libraries_prj
     GIT_REPOSITORY "https://github.com/beached/header_libraries.git"
     GIT_TAG "master"
-    SOURCE_DIR "${CMAKE_BINARY_DIR}/dependencies/header_libraries"
-	INSTALL_DIR "${CMAKE_BINARY_DIR}/install"
+    SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/headlibs"
+	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/install
     PATCH_COMMAND ""
     TEST_COMMAND ""
@@ -37,19 +48,8 @@ externalproject_add(
     char_range_prj
     GIT_REPOSITORY "https://github.com/beached/char_range.git"
     GIT_TAG "master"
-    SOURCE_DIR "${CMAKE_BINARY_DIR}/dependencies/char_range"
-	INSTALL_DIR "${CMAKE_BINARY_DIR}/install"
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/install
-    PATCH_COMMAND ""
-    TEST_COMMAND ""
-)
-
-externalproject_add(
-    lib_nodepp_prj
-    GIT_REPOSITORY "https://github.com/beached/lib_nodepp.git"
-    GIT_TAG "master"
-    SOURCE_DIR "${CMAKE_BINARY_DIR}/dependencies/lib_nodepp"
-	INSTALL_DIR "${CMAKE_BINARY_DIR}/install"
+    SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/chrrng"
+	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/install
     PATCH_COMMAND ""
     TEST_COMMAND ""
@@ -59,10 +59,12 @@ set( HEADER_FOLDER "include" )
 
 set( HEADER_FILES
 	${HEADER_FOLDER}/sqlite3_class.h
+	${HEADER_FOLDER}/kv_store.h
 )	
 
 set( SOURCE_FILES
 	sqlite3_class.cpp
+	kv_store.cpp
 )
 
 add_subdirectory( ./sqlite3 )
@@ -77,7 +79,7 @@ include_directories( "./include" )
 include_directories( SYSTEM ${Boost_INCLUDE_DIRS} )
 
 add_library( sqlite_helper STATIC ${HEADER_FILES} ${SOURCE_FILES} )
-add_dependencies( sqlite_helper header_libraries_prj char_range_prj lib_nodepp_prj )
+add_dependencies( sqlite_helper lib_nodepp_prj header_libraries_prj char_range_prj )
 target_link_libraries( sqlite_helper sqlite3_static char_range lib_nodepp ${Boost_LIBRARIES} )
 
 install( TARGETS sqlite_helper DESTINATION lib )
