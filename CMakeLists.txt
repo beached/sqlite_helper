@@ -23,7 +23,7 @@ else( )
 endif( )
 
 externalproject_add(
-    lib_nodepp_prj
+    nodeppprj
     GIT_REPOSITORY "https://github.com/beached/lib_nodepp.git"
     GIT_TAG "master"
     SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/nodepp"
@@ -34,7 +34,7 @@ externalproject_add(
 )
 
 externalproject_add(
-    header_libraries_prj
+    headlibsprj
     GIT_REPOSITORY "https://github.com/beached/header_libraries.git"
     GIT_TAG "master"
     SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/headlibs"
@@ -45,7 +45,7 @@ externalproject_add(
 )
 
 externalproject_add(
-    char_range_prj
+    chrrngprj
     GIT_REPOSITORY "https://github.com/beached/char_range.git"
     GIT_TAG "master"
     SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/chrrng"
@@ -79,7 +79,7 @@ include_directories( "./include" )
 include_directories( SYSTEM ${Boost_INCLUDE_DIRS} )
 
 add_library( sqlite_helper STATIC ${HEADER_FILES} ${SOURCE_FILES} )
-add_dependencies( sqlite_helper lib_nodepp_prj header_libraries_prj char_range_prj )
+add_dependencies( sqlite_helper nodeppprj headlibsprj chrrngprj )
 target_link_libraries( sqlite_helper sqlite3_static char_range lib_nodepp ${Boost_LIBRARIES} )
 
 install( TARGETS sqlite_helper DESTINATION lib )
