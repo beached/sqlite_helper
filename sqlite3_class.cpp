@@ -32,8 +32,7 @@ namespace daw {
 
 		Sqlite3DbException::Sqlite3DbException( int err_no ) : message( std::string( sqlite3_errstr( err_no ) ) ) { }
 
-		Sqlite3Db::Sqlite3Db( daw::nodepp::base::EventEmitter emitter ) :
-			daw::nodepp::base::StandardEvents<Sqlite3Db>( std::move( emitter ) ),
+		Sqlite3Db::Sqlite3Db( ) :
 			m_db( nullptr ),
 			m_is_open( false ) { }
 
@@ -42,7 +41,6 @@ namespace daw {
 		}
 
 		Sqlite3Db::Sqlite3Db( Sqlite3Db && other ):
-			daw::nodepp::base::StandardEvents<Sqlite3Db>( std::move( other ) ),
 			m_db( std::move( other.m_db ) ),
 			m_is_open( other.m_is_open ) {
 			other.m_db = nullptr;

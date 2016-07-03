@@ -23,17 +23,6 @@ else( )
 endif( )
 
 externalproject_add(
-    nodeppprj
-    GIT_REPOSITORY "https://github.com/beached/lib_nodepp.git"
-    GIT_TAG "master"
-    SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/nodepp"
-	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/inst
-    PATCH_COMMAND ""
-    TEST_COMMAND ""
-)
-
-externalproject_add(
     headlibsprj
     GIT_REPOSITORY "https://github.com/beached/header_libraries.git"
     GIT_TAG "master"
@@ -79,7 +68,7 @@ include_directories( "./include" )
 include_directories( SYSTEM ${Boost_INCLUDE_DIRS} )
 
 add_library( sqlite_helper STATIC ${HEADER_FILES} ${SOURCE_FILES} )
-add_dependencies( sqlite_helper nodeppprj headlibsprj chrrngprj )
+add_dependencies( sqlite_helper headlibsprj chrrngprj )
 target_link_libraries( sqlite_helper sqlite3_static char_range lib_nodepp ${Boost_LIBRARIES} )
 
 install( TARGETS sqlite_helper DESTINATION lib )

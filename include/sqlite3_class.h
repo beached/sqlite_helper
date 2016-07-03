@@ -32,7 +32,6 @@
 #include <cstdint>
 #include <daw/char_range/daw_char_range.h>
 #include <daw/daw_range.h>
-#include <daw/nodepp/base_event_emitter.h>
 
 namespace daw {
 	namespace db {
@@ -132,7 +131,7 @@ namespace daw {
 
 		std::string to_string( Sqlite3DbCellValue const & value );
 
-		class Sqlite3Db : public daw::nodepp::base::enable_shared<Sqlite3Db>, public daw::nodepp::base::StandardEvents<Sqlite3Db> {
+		class Sqlite3Db {
 			sqlite3 * m_db;
 			bool m_is_open;
 			std::mutex m_exec_lock;
@@ -143,7 +142,7 @@ namespace daw {
 
 			Sqlite3Db & operator=( Sqlite3Db const & ) = delete;
 
-			Sqlite3Db( daw::nodepp::base::EventEmitter emitter = daw::nodepp::base::create_event_emitter( ));
+			Sqlite3Db( );
 
 			~Sqlite3Db( );
 
