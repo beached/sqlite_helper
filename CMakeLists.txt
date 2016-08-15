@@ -29,8 +29,6 @@ externalproject_add(
     SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/headlibs"
 	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/inst
-    PATCH_COMMAND ""
-    TEST_COMMAND ""
 )
 
 externalproject_add(
@@ -40,8 +38,6 @@ externalproject_add(
     SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/chrrng"
 	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/inst
-    PATCH_COMMAND ""
-    TEST_COMMAND ""
 )
 
 set( HEADER_FOLDER "include" )
