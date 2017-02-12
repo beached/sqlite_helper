@@ -23,6 +23,7 @@
 #pragma once
 
 #include <boost/utility/string_view.hpp>
+#include <boost/variant.hpp>
 #include <memory>
 #include <sqlite3.h>
 #include <functional>
@@ -30,11 +31,20 @@
 #include <utility>
 #include <vector>
 #include <cstdint>
+
 #include <daw/char_range/daw_char_range.h>
 #include <daw/daw_range.h>
 
 namespace daw {
 	namespace db {
+		namespace types {
+			using real_t = double;
+			using integer_t = int64_t;
+			using text_t = daw::range::CharRange;
+			using blob_t = daw::range::Range<uint8_t const *>;
+			std::string to_string( blob_t const & );
+		}
+
 		struct Sqlite3DbException {
 			std::string message;
 
@@ -73,17 +83,17 @@ namespace daw {
 
 			Sqlite3DbColumnType get_column_type( size_t column );
 
-			daw::range::CharRange get_column_name( size_t column );
+			types::text_t get_column_name( size_t column );
 
-			double get_column_float( size_t column );
+			types::real_t get_column_float( size_t column );
 
-			int64_t get_column_integer( size_t column );
+			types::integer_t get_column_integer( size_t column );
 
 			daw::range::CharRange get_column_text( size_t column );
 
 			bool is_column_null( size_t column );
 
-			daw::range::Range<uint8_t const *> get_column_blob( size_t column );
+			types::blob_t get_column_blob( size_t column );
 
 			bool is_good( ) const;
 
@@ -93,38 +103,35 @@ namespace daw {
 			void bind( size_t index );	// bind a null to that value
 		};  // class Sqlite3DbPreparedStatement
 
-		class Sqlite3DbCellValue {
-			union value_t {
-				double float_value;
-				int64_t integer_value;
-				std::shared_ptr<daw::range::CharRange const> * text_value;
-				std::shared_ptr<daw::range::Range<uint8_t const *>> * blob_value;
-			} m_value;
+		struct Sqlite3DbCellValue {
+			using value_t = boost::variant<types::real_t, types::integer_t, types::text_t, types::blob_t, nullptr_t>;
+		private:
 			Sqlite3DbColumnType m_value_type;
+			value_t m_value;
 		public:
 			Sqlite3DbCellValue( Sqlite3DbPreparedStatement & statement, size_t column );
-			Sqlite3DbCellValue( Sqlite3DbCellValue const & other );
-			Sqlite3DbCellValue & operator=( Sqlite3DbCellValue const & rhs );
-			Sqlite3DbCellValue( Sqlite3DbCellValue && other );
-			Sqlite3DbCellValue & operator=( Sqlite3DbCellValue && rhs );
+			Sqlite3DbCellValue( Sqlite3DbCellValue const & other ) = default;
+			Sqlite3DbCellValue & operator=( Sqlite3DbCellValue const & rhs ) = default;
+			Sqlite3DbCellValue( Sqlite3DbCellValue && other ) = default;
+			Sqlite3DbCellValue & operator=( Sqlite3DbCellValue && rhs ) = default;
 
 			~Sqlite3DbCellValue( );
 
 			Sqlite3DbCellValue( );	// null
-			Sqlite3DbCellValue( double value );	// float
-			Sqlite3DbCellValue( int64_t value );	// integer
-			explicit Sqlite3DbCellValue( daw::range::CharRange value );	// utf-8 string
-			explicit Sqlite3DbCellValue( daw::range::Range<uint8_t const *> value );	// blob
+			Sqlite3DbCellValue( types::real_t value );	// float
+			Sqlite3DbCellValue( types::integer_t value );	// integer
+			explicit Sqlite3DbCellValue( types::text_t value );	// utf-8 string
+			explicit Sqlite3DbCellValue( types::blob_t value );	// blob
 
-			double const & get_float( ) const;
+			types::real_t const & get_float( ) const;
 
-			int64_t const & get_integer( ) const;
+			types::integer_t const & get_integer( ) const;
 
-			daw::range::CharRange const & get_text( ) const;
+			types::text_t const & get_text( ) const;
 
 			bool is_null( ) const;
 
-			daw::range::Range<uint8_t const *> const & get_blob( ) const;
+			types::blob_t const & get_blob( ) const;
 
 			Sqlite3DbColumnType get_type( ) const;
 		};  // class Sqlite3DbCellValue
@@ -160,8 +167,7 @@ namespace daw {
 
 			void exec( daw::range::CharRange sql, callback_t callback = nullptr );
 		};    // class Sqlite3Db
-
-
-
 	}    // namespace db
 }    // namespace daw
+
+
