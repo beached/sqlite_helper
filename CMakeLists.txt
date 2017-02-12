@@ -41,6 +41,7 @@ externalproject_add(
 )
 
 set( HEADER_FOLDER "include" )
+set( SOURCE_FOLDER "src" )
 
 set( HEADER_FILES
 	${HEADER_FOLDER}/sqlite3_class.h
@@ -48,8 +49,8 @@ set( HEADER_FILES
 )	
 
 set( SOURCE_FILES
-	sqlite3_class.cpp
-	kv_store.cpp
+	${SOURCE_FOLDER}/sqlite3_class.cpp
+	${SOURCE_FOLDER}/kv_store.cpp
 )
 
 add_subdirectory( ./sqlite3 )

@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2014-2015 Darrell Wright
+// Copyright (c) 2014-2017 Darrell Wright
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files( the "Software" ), to deal
@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include <boost/utility/string_ref.hpp>
+#include <boost/utility/string_view.hpp>
 #include <string>
 #include <sstream>
 
@@ -30,7 +30,7 @@ namespace daw {
 	namespace db {
 
 		struct kv_store {
-			kv_store( boost::string_ref filename );
+			kv_store( boost::string_view filename );
 			virtual ~kv_store( );
 			std::string operator( )( size_t hash );
 
