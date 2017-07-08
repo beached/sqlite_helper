@@ -104,7 +104,7 @@ namespace daw {
 		};  // class Sqlite3DbPreparedStatement
 
 		struct Sqlite3DbCellValue {
-			using value_t = boost::variant<types::real_t, types::integer_t, types::text_t, types::blob_t, nullptr_t>;
+			using value_t = boost::variant<types::real_t, types::integer_t, types::text_t, types::blob_t, std::nullptr_t>;
 		private:
 			Sqlite3DbColumnType m_value_type;
 			value_t m_value;
