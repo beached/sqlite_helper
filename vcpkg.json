@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "sqlite-helper",
+  "version": "0.1.0",
+  "dependencies": [
+    "boost-filesystem",
+    "boost-iostreams",
+    "boost-regex",
+    "boost-system",
+    "sqlite3",
+    "openssl"
+  ]
+}
+

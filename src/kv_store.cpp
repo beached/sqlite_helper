@@ -3,14 +3,14 @@
 // Copyright (c) 2014-2017 Darrell Wright
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files( the "Software" ), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
-// copies of the Software, and to permit persons to whom the Software is
+// of this software and associated documentation files( the "Software" ), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and / or
+// sell copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -23,17 +23,17 @@
 #include "kv_store.h"
 #include "sqlite3_class.h"
 
+#include <daw/daw_string_view.h>
+
 namespace daw {
 	namespace db {
-		kv_store::kv_store( boost::string_view filename ) {
+		kv_store::kv_store( daw::string_view filename ) {}
 
-		}
-		
-		kv_store::~kv_store( ) { }
+		kv_store::~kv_store( ) {}
 
 		std::string kv_store::operator( )( size_t hash ) {
 			return "";
 		}
 
-	}    // namespace db
-}    // namespace daw
+	} // namespace db
+} // namespace daw

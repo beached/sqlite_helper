@@ -1,76 +1,90 @@
-cmake_minimum_required( VERSION 3.2 )
+cmake_minimum_required(VERSION 3.16)
+project(daw-sqlite-helper
+        VERSION "0.1.0"
+        DESCRIPTION "C++ bindings for sqlite3"
+        HOMEPAGE_URL "https://github.com/beached/sqlite_helper"
+        LANGUAGES C CXX
+        )
 
-project( sqlite_helper_prj )
+set(CMAKE_CXX_STANDARD 20)
 
-include( ExternalProject )
+add_subdirectory(extern)
 
-find_package( Boost 1.59.0 COMPONENTS system filesystem regex unit_test_framework REQUIRED )
-find_package( OpenSSL REQUIRED )
+find_package(Boost 1.72.0 COMPONENTS system filesystem regex REQUIRED)
+find_package(OpenSSL REQUIRED)
 
-if( ${CMAKE_CXX_COMPILER_ID} STREQUAL 'MSVC' )
-	add_compile_options( -D_WIN32_WINNT=0x0601 /std:c++latest ) 
-else( )
-	if( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang" )
-		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14" )
-		add_compile_options(-march=native -pthread -Weverything -Wno-c++98-compat -Wno-covered-switch-default -Wno-padded -Wno-exit-time-destructors -Wno-c++98-compat-pedantic -Wno-unused-parameter -Wno-missing-noreturn -Wno-missing-prototypes -Wno-disabled-macro-expansion)
-		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
-		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-	elseif( ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )
-		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14" )
-		add_compile_options(-std=c++14 -march=native -pthread -Wall -Wno-deprecated-declarations)
-		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
-		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-	endif( )
-endif( )
+include_directories("${CMAKE_SOURCE_DIR}/include")
+set(HEADER_FOLDER "include")
+set(SOURCE_FOLDER "src")
 
-externalproject_add(
-    headlibsprj
-    GIT_REPOSITORY "https://github.com/beached/header_libraries.git"
-    GIT_TAG "master"
-    SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/headlibs"
-	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/inst
+set(HEADER_FILES
+        ${HEADER_FOLDER}/sqlite3_class.h
+        ${HEADER_FOLDER}/kv_store.h
+        )
+
+set(SOURCE_FILES
+        ${SOURCE_FOLDER}/sqlite3_class.cpp
+        ${SOURCE_FOLDER}/kv_store.cpp
+        )
+
+add_library(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})
+target_link_libraries(${PROJECT_NAME}
+        daw::daw-header-libraries
+        daw::daw-utf-range
+        sqlite3
+        )
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
+
+#Install
+include(GNUInstallDirs)
+
+option(BUILD_SHARED_LIBS "Build shared library" ON)
+
+target_include_directories(${PROJECT_NAME} INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+        PRIVATE src)
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
+
+install(TARGETS ${PROJECT_NAME}
+        EXPORT ${PROJECT_NAME}_Targets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+include(CMakePackageConfigHelpers)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+        VERSION ${PROJECT_VERSION}
+        SOVERSION 1)
+
+set(lib${PROJECT_NAME}_INSTALL_CMAKEDIR "share/Lib${PROJECT_NAME}/cmake"
+        CACHE STRING "Install location for generated CMake files.")
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+        "${PROJECT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in"
+        "${PROJECT_BINARY_DIR}/Lib${PROJECT_NAME}Config.cmake"
+        INSTALL_DESTINATION lib/cmake/Lib${PROJECT_NAME}
 )
 
-externalproject_add(
-    chrrngprj
-    GIT_REPOSITORY "https://github.com/beached/char_range.git"
-    GIT_TAG "master"
-    SOURCE_DIR "${CMAKE_BINARY_DIR}/deps/chrrng"
-	INSTALL_DIR "${CMAKE_BINARY_DIR}/inst"
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/inst
-)
+write_basic_package_version_file("${PROJECT_NAME}ConfigVersion.cmake"
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion)
 
-set( HEADER_FOLDER "include" )
-set( SOURCE_FOLDER "src" )
+install(EXPORT ${PROJECT_NAME}_Targets
+        FILE ${PROJECT_NAME}Targets.cmake
+        NAMESPACE daw::
+        DESTINATION lib/cmake/${PROJECT_NAME}
+        )
 
-set( HEADER_FILES
-	${HEADER_FOLDER}/sqlite3_class.h
-	${HEADER_FOLDER}/kv_store.h
-)	
-
-set( SOURCE_FILES
-	${SOURCE_FOLDER}/sqlite3_class.cpp
-	${SOURCE_FOLDER}/kv_store.cpp
-)
-
-add_subdirectory( ./sqlite3 )
-include_directories( ./sqlite3/src )
-
-include_directories( SYSTEM "${CMAKE_BINARY_DIR}/inst/include" )
-include_directories( SYSTEM ${Boost_INCLUDE_DIRS} )
-link_directories( "${CMAKE_BINARY_DIR}/inst/lib" )
-include_directories( "./include" )
-
-
-include_directories( SYSTEM ${Boost_INCLUDE_DIRS} )
-
-add_library( sqlite_helper STATIC ${HEADER_FILES} ${SOURCE_FILES} )
-add_dependencies( sqlite_helper headlibsprj chrrngprj )
-target_link_libraries( sqlite_helper sqlite3_static char_range lib_nodepp ${Boost_LIBRARIES} )
-
-install( TARGETS sqlite_helper DESTINATION lib )
-install( FILES ${CMAKE_BINARY_DIR}/sqlite3/libsqlite3.so DESTINATION lib )
-install( FILES ${CMAKE_BINARY_DIR}/sqlite3/libsqlite3_static.a DESTINATION lib )
-install( DIRECTORY ${HEADER_FOLDER}/ DESTINATION include/daw/sqlite_helper )
+# Testing
+#option(DAW_ENABLE_TESTING "Build unit tests" OFF)
+#if (DAW_ENABLE_TESTING)
+#    enable_testing()
+#    add_subdirectory(tests)
+#endif ()
 
