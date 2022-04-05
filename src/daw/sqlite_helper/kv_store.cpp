@@ -20,8 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "kv_store.h"
-#include "sqlite3_class.h"
+#include "daw/sqlite_helper/kv_store.h"
+#include "daw/sqlite_helper/sqlite3_class.h"
 
 #include <daw/daw_string_view.h>
 

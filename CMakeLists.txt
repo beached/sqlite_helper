@@ -13,8 +13,8 @@ add_subdirectory(extern)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 add_library(${PROJECT_NAME}
-        src/sqlite3_class.cpp
-        src/kv_store.cpp
+        src/daw/sqlite_helper/sqlite3_class.cpp
+        src/daw/sqlite_helper/kv_store.cpp
         )
 target_link_libraries(${PROJECT_NAME}
         daw::daw-header-libraries

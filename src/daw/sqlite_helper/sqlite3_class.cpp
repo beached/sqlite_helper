@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "sqlite3_class.h"
+#include "daw/sqlite_helper/sqlite3_class.h"
 
 #include <daw/daw_contiguous_view.h>
 #include <daw/daw_string_view.h>
