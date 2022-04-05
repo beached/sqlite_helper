@@ -10,9 +10,6 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(extern)
 
-find_package(Boost 1.72.0 COMPONENTS system filesystem regex REQUIRED)
-find_package(OpenSSL REQUIRED)
-
 include_directories("${CMAKE_SOURCE_DIR}/include")
 set(HEADER_FOLDER "include")
 set(SOURCE_FOLDER "src")
