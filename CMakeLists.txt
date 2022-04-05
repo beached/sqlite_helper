@@ -30,6 +30,7 @@ target_link_libraries(${PROJECT_NAME}
         daw::daw-utf-range
         sqlite3
         )
+add_library(daw::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
 
 #Install
