@@ -10,21 +10,12 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(extern)
 
-include_directories("${CMAKE_SOURCE_DIR}/include")
-set(HEADER_FOLDER "include")
-set(SOURCE_FOLDER "src")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-set(HEADER_FILES
-        ${HEADER_FOLDER}/sqlite3_class.h
-        ${HEADER_FOLDER}/kv_store.h
+add_library(${PROJECT_NAME}
+        src/sqlite3_class.cpp
+        src/kv_store.cpp
         )
-
-set(SOURCE_FILES
-        ${SOURCE_FOLDER}/sqlite3_class.cpp
-        ${SOURCE_FOLDER}/kv_store.cpp
-        )
-
-add_library(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME}
         daw::daw-header-libraries
         daw::daw-utf-range
