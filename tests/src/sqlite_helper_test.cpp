@@ -12,8 +12,7 @@
 
 int main( ) {
 	using namespace daw::db;
-	auto db = daw::db::Sqlite3Db( );
-	db.open( "db.sqlite" );
+	auto db = daw::db::Sqlite3Db( "db.sqlite" );
 	if( not db.has_table( "tbl" ) ) {
 		std::cout << "creating table\n";
 		db.exec( "CREATE TABLE tbl ( ID NUMBER, FOO VARCHAR(100) );" );

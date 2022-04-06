@@ -31,6 +31,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -179,13 +180,13 @@ namespace daw::db {
 			switch( m_value.index( ) ) {
 			case 0:
 				return Sqlite3DbColumnType::Float;
-			case 2:
+			case 1:
 				return Sqlite3DbColumnType::Integer;
-			case 3:
+			case 2:
 				return Sqlite3DbColumnType::Text;
-			case 4:
+			case 3:
 				return Sqlite3DbColumnType::Blob;
-			case 5:
+			case 4:
 				return Sqlite3DbColumnType::Null;
 			default:
 				std::cerr << "Unexpected column type stored.\n";
@@ -212,9 +213,10 @@ namespace daw::db {
 		daw::take_t<std::mutex> m_exec_lock;
 
 	public:
-		Sqlite3Db( ) = default;
+		explicit Sqlite3Db( ) = default;
+		explicit Sqlite3Db( std::filesystem::path filename );
 
-		void open( daw::string_view filename );
+		void open( std::filesystem::path filename );
 		void close( );
 		sqlite3 const *get_handle( ) const;
 		sqlite3 *get_handle( );

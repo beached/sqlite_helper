@@ -48,9 +48,9 @@ namespace daw::db {
 	Sqlite3DbException::Sqlite3DbException( int err_no )
 	  : message( std::string( sqlite3_errstr( err_no ) ) ) {}
 
-	void Sqlite3Db::open( daw::string_view filename ) {
+	void Sqlite3Db::open( std::filesystem::path filename ) {
 		sqlite3 *ptr = nullptr;
-		auto result = sqlite3_open( filename.data( ), &ptr );
+		auto result = sqlite3_open( filename.c_str( ), &ptr );
 		if( result ) {
 			throw Sqlite3DbException( "Could not open database " + static_cast<std::string>( filename ) +
 			                          ": " + sqlite3_errmsg( ptr ) );
@@ -123,6 +123,9 @@ namespace daw::db {
 		if( SQLITE_OK != rc ) {
 			throw Sqlite3DbException( rc );
 		}
+	}
+	Sqlite3Db::Sqlite3Db( std::filesystem::path filename ) {
+		open( filename );
 	}
 
 	Sqlite3DbPreparedStatement::Sqlite3DbPreparedStatement( Sqlite3Db &db, daw::string_view sql )
