@@ -86,21 +86,28 @@ namespace daw::sqlite {
 	}
 
 	daw::vector<std::string> database::tables( ) {
-		auto result = daw::vector<std::string>{ };
-		exec( prepared_statement( *this,
-		                          "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;" ),
-		      [&]( result_row_t row ) {
-			      result.push_back( static_cast<std::string>( row.front( ).value.get_text( ) ) );
-		      } );
-		return result;
+		std::string const sql = "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;";
+		auto first = exec( prepared_statement( *this, sql ) );
+		auto last = first.end( );
+		auto const row_count = first.count( );
+		return daw::vector<std::string>(
+		  do_resize_and_overwrite,
+		  row_count,
+		  [&]( std::string *ptr, std::size_t sz ) {
+			  while( first != last ) {
+				  std::construct_at( ptr, static_cast<std::string>( first->front( ).value.get_text( ) ) );
+				  ++first;
+				  ++ptr;
+			  }
+			  return sz;
+		  } );
 	}
 
 	bool database::has_table( daw::string_view table_name ) {
-		auto it =
-		  exec( prepared_statement( *this,
-		                            "SELECT name FROM sqlite_schema WHERE type='table' and name=?;",
-		                            table_name ) );
-		return std::distance( it, it.end( ) ) == 1;
+		std::string const sql = "SELECT name FROM sqlite_schema WHERE type='table' and name=?;";
+		auto const row_count = exec( prepared_statement( *this, sql, table_name ) ).count( );
+		assert( row_count <= 1 );
+		return row_count == 1;
 	}
 
 	query_iterator database::exec( prepared_statement statement ) {
@@ -125,7 +132,6 @@ namespace daw::sqlite {
 	} // namespace
 
 	namespace {
-
 		template<typename T>
 		requires( requires { typename T::i_am_a_prepared_statement; } ) cell_value::value_t
 		  get_column( T &statement, size_t column ) {

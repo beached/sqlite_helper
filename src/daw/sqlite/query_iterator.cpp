@@ -36,8 +36,7 @@ namespace daw::sqlite {
 		int rc = sqlite3_step( m_statement.get( ) );
 		if( rc == SQLITE_DONE ) {
 			m_row = static_cast<std::size_t>( -1 );
-			m_statement.reset_to_default_init( );
-		} else if( rc != SQLITE_ROW ) {
+		} else if( rc != SQLITE_DONE and rc != SQLITE_ROW ) {
 			throw sqlite3_exception( rc );
 		} else {
 			++m_row;
