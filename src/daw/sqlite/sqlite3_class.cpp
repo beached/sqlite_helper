@@ -21,6 +21,8 @@
 // SOFTWARE.
 
 #include "daw/sqlite/sqlite3_class.h"
+#include "daw/sqlite/prepared_statement.h"
+#include "daw/sqlite/query_iterator.h"
 
 #include <daw/daw_contiguous_view.h>
 #include <daw/daw_move.h>
@@ -100,139 +102,18 @@ namespace daw::sqlite {
 		                            table_name ) ) );
 	}
 
-	std::optional<result_row_t> database::exec( prepared_statement statement,
-	                                            bool ignore_other_rows ) {
+	query_iterator database::exec( prepared_statement statement ) {
 		assert( m_db );
-
-		int rc = SQLITE_ERROR;
-		auto result = result_row_t{ };
-		std::size_t count = 0;
-		while( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {
-			++count;
-			auto const column_count = statement.get_column_count( );
-			result =
-			  result_row_t( daw::do_resize_and_overwrite, column_count, [&]( auto *ptr, std::size_t sz ) {
-				  for( size_t column = 0; column != column_count; ++column ) {
-					  std::construct_at( ptr + column,
-					                     std::make_pair( statement.get_column_name( column ),
-					                                     cell_value( statement, column ) ) );
-				  }
-				  return sz;
-			  } );
-		}
-		if( rc == SQLITE_DONE ) {
-			if( count == 0 ) {
-				return std::optional<result_row_t>{ };
-			} else if( count == 1 ) {
-				return result;
-			}
-		}
-		if( rc == SQLITE_ROW and ignore_other_rows ) {
-			return std::optional<result_row_t>{ };
-		}
-		throw sqlite3_exception( rc );
+		return query_iterator( DAW_MOVE( statement ) );
 	}
 
-	std::optional<result_row_t> database::exec( std::string const &sql, bool ignore_other_rows ) {
+	query_iterator database::exec( std::string const &sql ) {
 		assert( m_db );
-		return exec( prepared_statement( *this, sql ), ignore_other_rows );
+		return exec( prepared_statement( *this, sql ) );
 	}
 
 	database::database( std::filesystem::path filename ) {
 		open( filename );
-	}
-
-	prepared_statement::prepared_statement( database &db, daw::string_view sql )
-	  : m_statement( nullptr ) {
-		assert( sql.size( ) <= std::numeric_limits<int>::max( ) );
-		auto rc = sqlite3_prepare_v2( db.get_handle( ),
-		                              sql.data( ),
-		                              static_cast<int>( sql.size( ) ),
-		                              &m_statement,
-		                              nullptr );
-		if( rc != SQLITE_OK ) {
-			m_statement = nullptr;
-			throw sqlite3_exception( rc );
-		}
-	}
-
-	prepared_statement::~prepared_statement( ) {
-		sqlite3_finalize( m_statement );
-	}
-
-	sqlite3_stmt *prepared_statement::get( ) {
-		return m_statement;
-	}
-
-	size_t prepared_statement::get_column_count( ) {
-		auto const count = sqlite3_column_count( get( ) );
-		assert( 0 <= count );
-		return static_cast<size_t>( count );
-	}
-
-	namespace {
-		inline void validate( prepared_statement &statement, size_t column ) {
-			if( !statement.is_good( ) ) {
-				throw sqlite3_exception( "Attempt to use an invalid statement" );
-			} else if( statement.get_column_count( ) <= column ) {
-				throw sqlite3_exception( "Column specified is out of range" );
-			}
-		}
-
-		template<typename T>
-		inline void delete_not_null( T **ptr ) {
-			assert( nullptr != ptr );
-			if( nullptr != *ptr ) {
-				delete *ptr;
-				*ptr = nullptr;
-			}
-		}
-	} // namespace
-
-	daw::string_view prepared_statement::get_column_name( size_t column ) {
-		validate( *this, column );
-		return daw::string_view( sqlite3_column_name( get( ), static_cast<int>( column ) ) );
-	}
-
-	types::real_t prepared_statement::get_column_float( size_t column ) {
-		validate( *this, column );
-		return sqlite3_column_double( m_statement, static_cast<int>( column ) );
-	}
-
-	types::integer_t prepared_statement::get_column_integer( size_t column ) {
-		validate( *this, column );
-		return sqlite3_column_int64( get( ), static_cast<int>( column ) );
-	}
-
-	types::text_t prepared_statement::get_column_text( size_t column ) {
-		validate( *this, column );
-		auto first =
-		  reinterpret_cast<char const *>( sqlite3_column_text( get( ), static_cast<int>( column ) ) );
-		return daw::string_view( first, sqlite3_column_bytes( get( ), static_cast<int>( column ) ) );
-	}
-
-	bool prepared_statement::is_column_null( size_t column ) {
-		return column_type::Null == get_column_type( column );
-	}
-
-	types::blob_t prepared_statement::get_column_blob( size_t column ) {
-		validate( *this, column );
-		auto first = reinterpret_cast<std::byte const *>(
-		  sqlite3_column_blob( get( ), static_cast<int>( column ) ) );
-		return types::blob_t(
-		  first,
-		  static_cast<std::size_t>( sqlite3_column_bytes( get( ), static_cast<int>( column ) ) ) );
-	}
-
-	bool prepared_statement::is_good( ) const {
-		return nullptr != m_statement;
-	}
-
-	void prepared_statement::reset( ) {
-		auto rc = sqlite3_reset( m_statement );
-		if( rc != SQLITE_OK ) {
-			throw sqlite3_exception( rc );
-		}
 	}
 
 	namespace {
@@ -242,74 +123,11 @@ namespace daw::sqlite {
 		}
 	} // namespace
 
-	void prepared_statement::bind( size_t index, cell_value const &value ) {
-		assert( index <= std::numeric_limits<int>::max( ) );
-		auto rc = SQLITE_ERROR;
-		switch( value.get_type( ) ) {
-		case column_type::Float:
-			rc = sqlite3_bind_double( m_statement, static_cast<int>( index ), value.get_float( ) );
-			break;
-		case column_type::Integer:
-			rc = sqlite3_bind_int64( m_statement, static_cast<int>( index ), value.get_integer( ) );
-			break;
-		case column_type::Text: {
-			auto const &val = value.get_text( );
-			auto *arry = new char[val.size( )]; // deleted by sqlite3_bind_text
-			                                    // 5th parameter function
-			std::copy( std::data( val ), daw::data_end( val ), arry );
-			rc = sqlite3_bind_text( m_statement,
-			                        static_cast<int>( index ),
-			                        arry,
-			                        val.size( ),
-			                        delete_text_or_blob );
-		} break;
-		case column_type::Blob: {
-			auto const &val = value.get_blob( );
-			auto *arry = new std::byte[val.size( )]; // deleted by sqlite3_bind_blob 5th
-			                                         // parameter function
-			std::copy( val.begin( ), val.end( ), arry );
-			rc = sqlite3_bind_blob( m_statement,
-			                        static_cast<int>( index ),
-			                        arry,
-			                        val.size( ),
-			                        delete_text_or_blob );
-		} break;
-		case column_type::Null:
-			rc = sqlite3_bind_null( m_statement, static_cast<int>( index ) );
-			break;
-		default:
-			std::cerr << "Unknown sqlite3 column type returned" << std::endl;
-			std::terminate( );
-		}
-		if( rc != SQLITE_OK ) {
-			throw sqlite3_exception( rc );
-		}
-	}
-
-	void prepared_statement::bind( size_t index ) {}
-
-	column_type prepared_statement::get_column_type( size_t column ) {
-		validate( *this, column );
-
-		switch( sqlite3_column_type( m_statement, static_cast<int>( column ) ) ) {
-		case SQLITE_INTEGER:
-			return column_type::Integer;
-		case SQLITE_FLOAT:
-			return column_type::Float;
-		case SQLITE_TEXT:
-			return column_type::Text;
-		case SQLITE_BLOB:
-			return column_type::Blob;
-		case SQLITE_NULL:
-			return column_type::Null;
-		default:
-			std::cerr << "Unknown sqlite3 column type returned" << std::endl;
-			std::terminate( );
-		}
-	}
-
 	namespace {
-		cell_value::value_t get_column( prepared_statement &statement, size_t column ) {
+
+		template<typename T>
+		requires( requires { typename T::i_am_a_prepared_statement; } ) cell_value::value_t
+		  get_column( T &statement, size_t column ) {
 			switch( statement.get_column_type( column ) ) {
 			case column_type::Float:
 				return cell_value::value_t( std::in_place_type<types::real_t>,
@@ -332,7 +150,11 @@ namespace daw::sqlite {
 			}
 		}
 	} // namespace
+
 	cell_value::cell_value( prepared_statement &statement, size_t column )
+	  : m_value{ get_column( statement, column ) } {}
+
+	cell_value::cell_value( shared_prepared_statement &statement, size_t column )
 	  : m_value{ get_column( statement, column ) } {}
 
 	std::string to_string( cell_value const &value ) {

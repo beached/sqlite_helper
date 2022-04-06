@@ -15,6 +15,8 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 add_library(${PROJECT_NAME}
         src/daw/sqlite/sqlite3_class.cpp
         src/daw/sqlite/kv_store.cpp
+        src/daw/sqlite/query_iterator.cpp
+        src/daw/sqlite/prepared_statement.cpp
         )
 target_link_libraries(${PROJECT_NAME}
         daw::daw-header-libraries
