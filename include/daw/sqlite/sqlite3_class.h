@@ -31,6 +31,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <functional>
 #include <iostream>
@@ -39,7 +40,7 @@
 #include <sqlite3.h>
 #include <utility>
 
-namespace daw::db {
+namespace daw::sqlite {
 	namespace types {
 		using real_t = double;
 		using integer_t = int64_t;
@@ -48,47 +49,47 @@ namespace daw::db {
 		std::string to_string( blob_t const & );
 	} // namespace types
 
-	struct Sqlite3DbException {
-		std::string message;
+	class sqlite3_exception : public std::exception {
+		int m_error = -1;
+		std::string m_message;
 
-		Sqlite3DbException( std::string msg );
+	public:
+		explicit sqlite3_exception( int err_no );
+		explicit sqlite3_exception( std::string message );
 
-		Sqlite3DbException( int err_no );
-	}; // struct Sqlite3DbException
+		char const *what( ) const noexcept override;
+		int error( ) const;
+	}; // struct sqlite3_exception
 
-	enum class Sqlite3DbColumnType { Float, Integer, Text, Blob, Null };
+	enum class column_type { Float, Integer, Text, Blob, Null };
 
-	class Sqlite3Db;
-	class Sqlite3DbCellValue;
+	class database;
+	class cell_value;
 
-	class Sqlite3DbPreparedStatement {
+	class prepared_statement {
 		sqlite3_stmt *m_statement;
 
 	public:
-		Sqlite3DbPreparedStatement( Sqlite3Db &db, daw::string_view sql );
+		prepared_statement( database &db, daw::string_view sql );
 
 		template<typename Param, typename... Params>
-		requires( convertible_to<Param, Sqlite3DbCellValue> and
-		          ( convertible_to<Params, Sqlite3DbCellValue> and ... ) )
-		  Sqlite3DbPreparedStatement( Sqlite3Db &db,
-		                              daw::string_view sql,
-		                              Param &&param,
-		                              Params &&...params )
-		  : Sqlite3DbPreparedStatement( db, sql ) {
+		requires( convertible_to<Param, cell_value> and ( convertible_to<Params, cell_value> and ... ) )
+		  prepared_statement( database &db, daw::string_view sql, Param &&param, Params &&...params )
+		  : prepared_statement( db, sql ) {
 			[&]<std::size_t... Is>( std::index_sequence<Is...> ) {
-				bind( 1, Sqlite3DbCellValue( DAW_FWD( param ) ) );
+				bind( 1, cell_value( DAW_FWD( param ) ) );
 				(void)( ( bind( Is + 2, DAW_FWD( params ) ), 1 ) + ... );
 			}
 			( std::make_index_sequence<sizeof...( Params )>{ } );
 		}
 
-		~Sqlite3DbPreparedStatement( );
+		~prepared_statement( );
 
 		sqlite3_stmt *get( );
 
 		size_t get_column_count( );
 
-		Sqlite3DbColumnType get_column_type( size_t column );
+		column_type get_column_type( size_t column );
 
 		types::text_t get_column_name( size_t column );
 
@@ -106,11 +107,11 @@ namespace daw::db {
 
 		void reset( );
 
-		void bind( size_t index, Sqlite3DbCellValue const &value );
+		void bind( size_t index, cell_value const &value );
 		void bind( size_t index ); // bind a null to that value
-	};                           // class Sqlite3DbPreparedStatement
+	};                           // class prepared_statement
 
-	struct Sqlite3DbCellValue {
+	struct cell_value {
 		struct null_cell_t {};
 		using value_t =
 		  std::variant<types::real_t, types::integer_t, types::text_t, types::blob_t, null_cell_t>;
@@ -119,28 +120,28 @@ namespace daw::db {
 		value_t m_value = null_cell_t{ };
 
 	public:
-		Sqlite3DbCellValue( Sqlite3DbPreparedStatement &statement, size_t column );
+		cell_value( prepared_statement &statement, size_t column );
 
-		explicit DAW_CONSTEVAL Sqlite3DbCellValue( ) = default;
+		explicit DAW_CONSTEVAL cell_value( ) = default;
 
-		constexpr Sqlite3DbCellValue( types::real_t value )
+		constexpr cell_value( types::real_t value )
 		  : m_value{ std::in_place_type<types::real_t>, std::move( value ) } {}
 
-		constexpr Sqlite3DbCellValue( types::integer_t value )
+		constexpr cell_value( types::integer_t value )
 		  : m_value{ std::in_place_type<types::integer_t>, std::move( value ) } {}
 
-		constexpr Sqlite3DbCellValue( types::text_t value )
+		constexpr cell_value( types::text_t value )
 		  : m_value{ std::in_place_type<types::text_t>, std::move( value ) } {}
 
-		constexpr Sqlite3DbCellValue( types::blob_t value )
+		constexpr cell_value( types::blob_t value )
 		  : m_value{ std::in_place_type<types::blob_t>, std::move( value ) } {}
 
-		DAW_CONSTEVAL Sqlite3DbCellValue( std::nullptr_t ) {}
+		DAW_CONSTEVAL cell_value( std::nullptr_t ) {}
 
 		constexpr types::real_t const &get_float( ) const {
 			auto *ptr = std::get_if<types::real_t>( &m_value );
 			if( not ptr ) {
-				throw Sqlite3DbException( "Cell Value is not of type Real" );
+				throw sqlite3_exception( "Cell Value is not of type Real" );
 			}
 			return *ptr;
 		}
@@ -148,7 +149,7 @@ namespace daw::db {
 		constexpr types::integer_t const &get_integer( ) const {
 			auto *ptr = std::get_if<types::integer_t>( &m_value );
 			if( not ptr ) {
-				throw Sqlite3DbException( "Cell Value is not of type Integer" );
+				throw sqlite3_exception( "Cell Value is not of type Integer" );
 			}
 			return *ptr;
 		}
@@ -156,7 +157,7 @@ namespace daw::db {
 		constexpr types::text_t const &get_text( ) const {
 			auto *ptr = std::get_if<types::text_t>( &m_value );
 			if( not ptr ) {
-				throw Sqlite3DbException( "Cell Value is not of type Text" );
+				throw sqlite3_exception( "Cell Value is not of type Text" );
 			}
 			return *ptr;
 		}
@@ -164,7 +165,7 @@ namespace daw::db {
 		constexpr types::blob_t const &get_blob( ) const {
 			auto *ptr = std::get_if<types::blob_t>( &m_value );
 			if( not ptr ) {
-				throw Sqlite3DbException( "Cell Value is not of type Blob" );
+				throw sqlite3_exception( "Cell Value is not of type Blob" );
 			}
 			return *ptr;
 		}
@@ -173,48 +174,50 @@ namespace daw::db {
 			return std::holds_alternative<null_cell_t>( m_value );
 		}
 
-		constexpr Sqlite3DbColumnType get_type( ) const {
-			// 	enum class Sqlite3DbColumnType { Float, Integer, Text, Blob, Null };
+		constexpr column_type get_type( ) const {
+			// 	enum class column_type { Float, Integer, Text, Blob, Null };
 			// std::variant<types::real_t, types::integer_t, types::text_t, types::blob_t,
 			// std::nullptr_t>;
 			switch( m_value.index( ) ) {
 			case 0:
-				return Sqlite3DbColumnType::Float;
+				return column_type::Float;
 			case 1:
-				return Sqlite3DbColumnType::Integer;
+				return column_type::Integer;
 			case 2:
-				return Sqlite3DbColumnType::Text;
+				return column_type::Text;
 			case 3:
-				return Sqlite3DbColumnType::Blob;
+				return column_type::Blob;
 			case 4:
-				return Sqlite3DbColumnType::Null;
+				return column_type::Null;
 			default:
 				std::cerr << "Unexpected column type stored.\n";
 				std::terminate( );
 			}
 		}
-	}; // class Sqlite3DbCellValue
+	}; // class cell_value
 
-	std::string to_string( Sqlite3DbCellValue const &value );
+	std::string to_string( cell_value const &value );
 
-	struct sqlite_deleter {
-		inline void operator( )( sqlite3 *ptr ) const noexcept {
-			sqlite3_close( ptr );
-		}
-	};
+	namespace sqlite_impl {
+		struct sqlite_deleter {
+			inline void operator( )( sqlite3 *ptr ) const noexcept {
+				sqlite3_close( ptr );
+			}
+		};
+	} // namespace sqlite_impl
 
 	template<typename T>
 	concept exec_callback =
-	  std::is_invocable_v<T, daw::vector<std::pair<daw::string_view, Sqlite3DbCellValue>>>;
+	  std::is_invocable_v<T, daw::vector<std::pair<daw::string_view, cell_value>>>;
 
-	class Sqlite3Db {
-		std::unique_ptr<sqlite3, sqlite_deleter> m_db;
+	class database {
+		std::unique_ptr<sqlite3, sqlite_impl::sqlite_deleter> m_db;
 		daw::take_t<bool> m_is_open;
 		daw::take_t<std::mutex> m_exec_lock;
 
 	public:
-		explicit Sqlite3Db( ) = default;
-		explicit Sqlite3Db( std::filesystem::path filename );
+		explicit database( ) = default;
+		explicit database( std::filesystem::path filename );
 
 		void open( std::filesystem::path filename );
 		void close( );
@@ -223,17 +226,17 @@ namespace daw::db {
 		daw::vector<std::string> tables( );
 		bool has_table( daw::string_view table_name );
 
-		void exec( Sqlite3DbPreparedStatement statement );
+		void exec( prepared_statement statement );
 		void exec( std::string const &sql );
 
 		template<exec_callback Callback>
-		void exec( Sqlite3DbPreparedStatement statement, Callback cb ) {
+		void exec( prepared_statement statement, Callback cb ) {
 			assert( m_db );
 
 			int rc = SQLITE_ERROR;
 
 			while( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {
-				using cell_t = std::pair<daw::string_view, Sqlite3DbCellValue>;
+				using cell_t = std::pair<daw::string_view, cell_value>;
 				auto const column_count = statement.get_column_count( );
 				cb( daw::vector<cell_t>( daw::do_resize_and_overwrite,
 				                         column_count,
@@ -242,20 +245,20 @@ namespace daw::db {
 						                         std::construct_at(
 						                           ptr + column,
 						                           std::make_pair( statement.get_column_name( column ),
-						                                           Sqlite3DbCellValue( statement, column ) ) );
+						                                           cell_value( statement, column ) ) );
 					                         }
 					                         return sz;
 				                         } ) );
 			}
 			if( SQLITE_DONE != rc ) {
-				throw Sqlite3DbException( rc );
+				throw sqlite3_exception( rc );
 			}
 		}
 
 		template<exec_callback Callback>
 		void exec( daw::string_view sql, Callback cb ) {
 			assert( m_db );
-			exec( Sqlite3DbPreparedStatement( *this, sql ), DAW_MOVE( cb ) );
+			exec( prepared_statement( *this, sql ), DAW_MOVE( cb ) );
 		}
-	}; // class Sqlite3Db
-} // namespace daw::db
+	}; // class database
+} // namespace daw::sqlite

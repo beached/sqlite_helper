@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(daw-sqlite-helper
-        VERSION "0.1.2"
+        VERSION "0.2.0"
         DESCRIPTION "C++ bindings for sqlite3"
         HOMEPAGE_URL "https://github.com/beached/sqlite_helper"
         LANGUAGES C CXX
@@ -13,8 +13,8 @@ add_subdirectory(extern)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 add_library(${PROJECT_NAME}
-        src/daw/sqlite_helper/sqlite3_class.cpp
-        src/daw/sqlite_helper/kv_store.cpp
+        src/daw/sqlite/sqlite3_class.cpp
+        src/daw/sqlite/kv_store.cpp
         )
 target_link_libraries(${PROJECT_NAME}
         daw::daw-header-libraries

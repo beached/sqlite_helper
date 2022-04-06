@@ -6,13 +6,13 @@
 // Official repository: https://github.com/beached/sqlite_helper
 //
 
-#include <daw/sqlite_helper/sqlite3_class.h>
+#include <daw/sqlite/sqlite3_class.h>
 
 #include <iostream>
 
 int main( ) {
-	using namespace daw::db;
-	auto db = daw::db::Sqlite3Db( "db.sqlite" );
+	using namespace daw::sqlite;
+	auto db = database( "db.sqlite" );
 	if( not db.has_table( "tbl" ) ) {
 		std::cout << "creating table\n";
 		db.exec( "CREATE TABLE tbl ( ID NUMBER, FOO VARCHAR(100) );" );
