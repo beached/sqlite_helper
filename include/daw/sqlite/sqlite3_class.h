@@ -78,28 +78,9 @@ namespace daw::sqlite {
 		template<exec_callback Callback>
 		void exec( prepared_statement statement, Callback cb ) {
 			assert( m_db );
-			auto it = exec( DAW_MOVE( statement ) );
-			std::for_each( it, it.end( ), cb );
-			/*
-			int rc = SQLITE_ERROR;
-
-			while( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {
-			  auto const column_count = statement.get_column_count( );
-			  cb( result_row_t( daw::do_resize_and_overwrite,
-			                    column_count,
-			                    [&]( auto *ptr, std::size_t sz ) {
-			                      for( size_t column = 0; column != column_count; ++column ) {
-			                        std::construct_at(
-			                          ptr + column,
-			                          std::make_pair( statement.get_column_name( column ),
-			                                          cell_value( statement, column ) ) );
-			                      }
-			                      return sz;
-			                    } ) );
+			for( auto &&row : exec( DAW_MOVE( statement ) ) ) {
+				cb( DAW_FWD( row ) );
 			}
-			if( SQLITE_DONE != rc ) {
-			  throw sqlite3_exception( rc );
-			}*/
 		}
 
 		template<exec_callback Callback>

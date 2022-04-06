@@ -22,8 +22,8 @@ namespace daw::sqlite {
 			  result_row_t( daw::do_resize_and_overwrite, column_count, [&]( auto *ptr, std::size_t sz ) {
 				  for( size_t column = 0; column != column_count; ++column ) {
 					  std::construct_at( ptr + column,
-					                     std::make_pair( m_statement.get_column_name( column ),
-					                                     cell_value( m_statement, column ) ) );
+					                     m_statement.get_column_name( column ),
+					                     cell_value( m_statement, column ) );
 				  }
 				  return sz;
 			  } );

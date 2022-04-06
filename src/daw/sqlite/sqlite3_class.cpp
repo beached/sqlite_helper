@@ -90,16 +90,17 @@ namespace daw::sqlite {
 		exec( prepared_statement( *this,
 		                          "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;" ),
 		      [&]( result_row_t row ) {
-			      result.push_back( static_cast<std::string>( row.front( ).second.get_text( ) ) );
+			      result.push_back( static_cast<std::string>( row.front( ).value.get_text( ) ) );
 		      } );
 		return result;
 	}
 
 	bool database::has_table( daw::string_view table_name ) {
-		return static_cast<bool>(
+		auto it =
 		  exec( prepared_statement( *this,
 		                            "SELECT name FROM sqlite_schema WHERE type='table' and name=?;",
-		                            table_name ) ) );
+		                            table_name ) );
+		return std::distance( it, it.end( ) ) == 1;
 	}
 
 	query_iterator database::exec( prepared_statement statement ) {

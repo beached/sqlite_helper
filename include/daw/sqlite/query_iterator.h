@@ -30,6 +30,7 @@ namespace daw::sqlite {
 		using const_reference = value_type const &;
 		using iterator_category = std::input_iterator_tag;
 		friend class ::daw::sqlite::database;
+
 	private:
 		shared_prepared_statement m_statement = { };
 		std::size_t m_row = static_cast<std::size_t>( -1 );
@@ -39,6 +40,7 @@ namespace daw::sqlite {
 		  : m_statement( DAW_MOVE( statement ) ) {
 			operator++( );
 		}
+
 	public:
 		explicit query_iterator( ) = default;
 
@@ -59,12 +61,24 @@ namespace daw::sqlite {
 		}
 		constexpr bool operator!=( iterator_type const & ) const = default;
 
-		iterator_type begin( ) {
+		inline iterator_type begin( ) {
 			return *this;
 		}
 
-		iterator_type end( ) {
+		inline iterator_type end( ) {
 			return iterator_type{ };
+		}
+
+		constexpr std::size_t row( ) const {
+			return m_row;
+		}
+
+		constexpr void reset( ) {
+			if( m_statement ) {
+				m_statement.reset( );
+				m_row = static_cast<std::size_t>( -1 );
+				operator++( );
+			}
 		}
 
 		explicit inline operator bool( ) const {
