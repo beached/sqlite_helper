@@ -71,9 +71,9 @@ install(EXPORT ${PROJECT_NAME}_Targets
         )
 
 # Testing
-#option(DAW_ENABLE_TESTING "Build unit tests" OFF)
-#if (DAW_ENABLE_TESTING)
-#    enable_testing()
-#    add_subdirectory(tests)
-#endif ()
+option(DAW_ENABLE_TESTING "Build unit tests" OFF)
+if (DAW_ENABLE_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+endif ()
 

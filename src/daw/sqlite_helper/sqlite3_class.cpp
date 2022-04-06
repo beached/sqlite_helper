@@ -66,40 +66,72 @@ namespace daw {
 		}
 
 		sqlite3 const *Sqlite3Db::get_handle( ) const {
+			assert( m_db );
 			return m_db.get( );
 		}
 
 		sqlite3 *Sqlite3Db::get_handle( ) {
+			assert( m_db );
 			return m_db.get( );
 		}
+		daw::vector<std::string> Sqlite3Db::tables( ) {
 
-		void Sqlite3Db::exec( daw::range::utf_range sql, Sqlite3Db::callback_t callback ) {
-			Sqlite3DbPreparedStatement statement( *this, sql );
+			auto statement = Sqlite3DbPreparedStatement(
+			  *this,
+			  R"sql(SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;)sql" );
 			int rc = SQLITE_ERROR;
 
+			auto result = daw::vector<std::string>{ };
 			while( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {
-				if( callback ) {
-					std::vector<std::pair<daw::range::utf_range, Sqlite3DbCellValue>> row;
-					auto const column_count = statement.get_column_count( );
-					for( size_t column = 0; column < column_count; ++column ) {
-						row.emplace_back( std::make_pair( statement.get_column_name( column ),
-						                                  Sqlite3DbCellValue( statement, column ) ) );
-					}
-					callback( row );
-				}
+				auto const column_count = statement.get_column_count( );
+				result.push_back(
+				  static_cast<std::string>( Sqlite3DbCellValue( statement, 0 ).get_text( ) ) );
 			}
+			if( SQLITE_DONE != rc ) {
+				throw Sqlite3DbException( rc );
+			}
+			return result;
+		}
+
+		bool Sqlite3Db::has_table( daw::string_view table_name ) {
+			auto statement = Sqlite3DbPreparedStatement(
+			  *this,
+			  R"sql(SELECT name FROM sqlite_schema WHERE type='table' and name=?;)sql" );
+			statement.bind( 1, Sqlite3DbCellValue( table_name ) );
+			int rc = SQLITE_ERROR;
+
+			if( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {
+				return true;
+			}
+			if( SQLITE_DONE != rc ) {
+				throw Sqlite3DbException( rc );
+			}
+			return false;
+		}
+		void Sqlite3Db::exec( Sqlite3DbPreparedStatement statement ) {
+			assert( m_db );
+
+			int rc = SQLITE_ERROR;
+			while( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {}
 			if( SQLITE_DONE != rc ) {
 				throw Sqlite3DbException( rc );
 			}
 		}
 
-		Sqlite3DbPreparedStatement::Sqlite3DbPreparedStatement( Sqlite3Db &db,
-		                                                        daw::range::utf_range sql )
+		void Sqlite3Db::exec( std::string const &sql ) {
+			assert( m_db );
+			int rc = sqlite3_exec( m_db.get( ), sql.c_str( ), nullptr, nullptr, nullptr );
+			if( SQLITE_OK != rc ) {
+				throw Sqlite3DbException( rc );
+			}
+		}
+
+		Sqlite3DbPreparedStatement::Sqlite3DbPreparedStatement( Sqlite3Db &db, daw::string_view sql )
 		  : m_statement( nullptr ) {
-			assert( sql.raw_size( ) <= std::numeric_limits<int>::max( ) );
+			assert( sql.size( ) <= std::numeric_limits<int>::max( ) );
 			auto rc = sqlite3_prepare_v2( db.get_handle( ),
-			                              sql.raw_begin( ),
-			                              static_cast<int>( sql.raw_size( ) ),
+			                              sql.data( ),
+			                              static_cast<int>( sql.size( ) ),
 			                              &m_statement,
 			                              nullptr );
 			if( SQLITE_OK != rc ) {
@@ -141,10 +173,9 @@ namespace daw {
 			}
 		} // namespace
 
-		daw::range::utf_range Sqlite3DbPreparedStatement::get_column_name( size_t column ) {
+		daw::string_view Sqlite3DbPreparedStatement::get_column_name( size_t column ) {
 			validate( *this, column );
-			return daw::range::create_char_range(
-			  sqlite3_column_name( get( ), static_cast<int>( column ) ) );
+			return daw::string_view( sqlite3_column_name( get( ), static_cast<int>( column ) ) );
 		}
 
 		types::real_t Sqlite3DbPreparedStatement::get_column_float( size_t column ) {
@@ -161,9 +192,7 @@ namespace daw {
 			validate( *this, column );
 			auto first =
 			  reinterpret_cast<char const *>( sqlite3_column_text( get( ), static_cast<int>( column ) ) );
-			return daw::range::create_char_range(
-			  first,
-			  first + sqlite3_column_bytes( get( ), static_cast<int>( column ) ) );
+			return daw::string_view( first, sqlite3_column_bytes( get( ), static_cast<int>( column ) ) );
 		}
 
 		bool Sqlite3DbPreparedStatement::is_column_null( size_t column ) {
@@ -209,19 +238,19 @@ namespace daw {
 				break;
 			case Sqlite3DbColumnType::Text: {
 				auto const &val = value.get_text( );
-				auto arry = new char[val.raw_size( )]; // deleted by sqlite3_bind_text
-				                                       // 5th parameter function
-				std::copy( val.raw_begin( ), val.raw_end( ), arry );
+				auto *arry = new char[val.size( )]; // deleted by sqlite3_bind_text
+				                                    // 5th parameter function
+				std::copy( std::data( val ), daw::data_end( val ), arry );
 				rc = sqlite3_bind_text( m_statement,
 				                        static_cast<int>( index ),
 				                        arry,
-				                        val.raw_size( ),
+				                        val.size( ),
 				                        delete_text_or_blob );
 			} break;
 			case Sqlite3DbColumnType::Blob: {
 				auto const &val = value.get_blob( );
-				auto arry = new char[val.size( )]; // deleted by sqlite3_bind_blob 5th
-				                                   // parameter function
+				auto *arry = new char[val.size( )]; // deleted by sqlite3_bind_blob 5th
+				                                    // parameter function
 				std::copy( val.begin( ), val.end( ), arry );
 				rc = sqlite3_bind_text( m_statement,
 				                        static_cast<int>( index ),
@@ -263,10 +292,6 @@ namespace daw {
 			}
 		}
 
-		Sqlite3DbCellValue::Sqlite3DbCellValue( )
-		  : m_value_type( Sqlite3DbColumnType::Null )
-		  , m_value{ nullptr } {}
-
 		namespace {
 			Sqlite3DbCellValue::value_t get_column( Sqlite3DbPreparedStatement &statement,
 			                                        size_t column ) {
@@ -287,62 +312,8 @@ namespace daw {
 				}
 			}
 		} // namespace
-
 		Sqlite3DbCellValue::Sqlite3DbCellValue( Sqlite3DbPreparedStatement &statement, size_t column )
-		  : m_value_type( statement.get_column_type( column ) )
-		  , m_value{ get_column( statement, column ) } {}
-
-		Sqlite3DbCellValue::Sqlite3DbCellValue( types::real_t value )
-		  : m_value_type( Sqlite3DbColumnType::Float )
-		  , m_value{ std::move( value ) } {}
-
-		Sqlite3DbCellValue::Sqlite3DbCellValue( types::integer_t value )
-		  : m_value_type( Sqlite3DbColumnType::Integer )
-		  , m_value{ std::move( value ) } {}
-
-		Sqlite3DbCellValue::Sqlite3DbCellValue( daw::range::utf_range value )
-		  : m_value_type( Sqlite3DbColumnType::Text )
-		  , m_value{ std::move( value ) } {}
-
-		Sqlite3DbCellValue::Sqlite3DbCellValue( daw::contiguous_view<uint8_t const> value )
-		  : m_value_type( Sqlite3DbColumnType::Blob )
-		  , m_value{ std::move( value ) } {}
-
-		double const &Sqlite3DbCellValue::get_float( ) const {
-			if( Sqlite3DbColumnType::Float != m_value_type ) {
-				throw Sqlite3DbException( "Cell Value is not of type Real" );
-			}
-			return std::get<types::real_t>( m_value );
-		}
-
-		int64_t const &Sqlite3DbCellValue::get_integer( ) const {
-			if( Sqlite3DbColumnType::Integer != m_value_type ) {
-				throw Sqlite3DbException( "Cell Value is not of type Integer" );
-			}
-			return std::get<types::integer_t>( m_value );
-		}
-
-		daw::range::utf_range const &Sqlite3DbCellValue::get_text( ) const {
-			if( Sqlite3DbColumnType::Text != m_value_type ) {
-				throw Sqlite3DbException( "Cell Value is not of type Text" );
-			}
-			return std::get<types::text_t>( m_value );
-		}
-
-		bool Sqlite3DbCellValue::is_null( ) const {
-			return Sqlite3DbColumnType::Null == m_value_type;
-		}
-
-		daw::contiguous_view<uint8_t const> const &Sqlite3DbCellValue::get_blob( ) const {
-			if( Sqlite3DbColumnType::Blob != m_value_type ) {
-				throw Sqlite3DbException( "Cell Value is not of type Text" );
-			}
-			return std::get<types::blob_t>( m_value );
-		}
-
-		Sqlite3DbColumnType Sqlite3DbCellValue::get_type( ) const {
-			return m_value_type;
-		}
+		  : m_value{ get_column( statement, column ) } {}
 
 		std::string to_string( Sqlite3DbCellValue const &value ) {
 			switch( value.get_type( ) ) {
@@ -351,7 +322,7 @@ namespace daw {
 			case Sqlite3DbColumnType::Integer:
 				return std::to_string( value.get_integer( ) );
 			case Sqlite3DbColumnType::Text:
-				return to_string( value.get_text( ) );
+				return static_cast<std::string>( value.get_text( ) );
 			case Sqlite3DbColumnType::Blob:
 				return types::to_string( value.get_blob( ) );
 			case Sqlite3DbColumnType::Null:
@@ -361,6 +332,5 @@ namespace daw {
 				std::terminate( );
 			}
 		}
-
 	} // namespace db
 } // namespace daw
