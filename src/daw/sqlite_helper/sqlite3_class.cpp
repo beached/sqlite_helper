@@ -48,55 +48,29 @@ namespace daw {
 		Sqlite3DbException::Sqlite3DbException( int err_no )
 		  : message( std::string( sqlite3_errstr( err_no ) ) ) {}
 
-		Sqlite3Db::Sqlite3Db( )
-		  : m_db( nullptr )
-		  , m_is_open( false ) {}
-
-		Sqlite3Db::~Sqlite3Db( ) {
-			close( );
-		}
-
-		Sqlite3Db::Sqlite3Db( Sqlite3Db &&other )
-		  : m_db( std::move( other.m_db ) )
-		  , m_is_open( other.m_is_open ) {
-			other.m_db = nullptr;
-			other.m_is_open = false;
-		}
-
-		Sqlite3Db &Sqlite3Db::operator=( Sqlite3Db &&rhs ) {
-			if( this != &rhs ) {
-				m_db = std::move( rhs.m_db );
-				m_is_open = std::move( rhs.m_is_open );
-				rhs.m_db = nullptr;
-				rhs.m_is_open = false;
-			}
-			return *this;
-		}
-
 		void Sqlite3Db::open( daw::string_view filename ) {
-			auto result = sqlite3_open( filename.data( ), &m_db );
+			sqlite3 *ptr = nullptr;
+			auto result = sqlite3_open( filename.data( ), &ptr );
 			if( result ) {
 				throw Sqlite3DbException( "Could not open database " +
 				                          static_cast<std::string>( filename ) + ": " +
-				                          sqlite3_errmsg( m_db ) );
+				                          sqlite3_errmsg( ptr ) );
 			}
+			m_db.reset( ptr );
 			m_is_open = true;
 		}
 
 		void Sqlite3Db::close( ) {
-			if( m_db && m_is_open ) {
-				sqlite3_close( m_db );
-				m_db = nullptr;
-				m_is_open = false;
-			}
+			m_db.reset( );
+			m_is_open.reset( );
 		}
 
 		sqlite3 const *Sqlite3Db::get_handle( ) const {
-			return m_db;
+			return m_db.get( );
 		}
 
 		sqlite3 *Sqlite3Db::get_handle( ) {
-			return m_db;
+			return m_db.get( );
 		}
 
 		void Sqlite3Db::exec( daw::range::utf_range sql, Sqlite3Db::callback_t callback ) {

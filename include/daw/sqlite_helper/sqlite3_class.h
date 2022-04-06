@@ -24,6 +24,7 @@
 
 #include <daw/daw_contiguous_view.h>
 #include <daw/daw_string_view.h>
+#include <daw/daw_take.h>
 #include <daw/utf_range/daw_utf_range.h>
 
 #include <cstdint>
@@ -123,35 +124,27 @@ namespace daw {
 
 		std::string to_string( Sqlite3DbCellValue const &value );
 
+		struct sqlite_deleter {
+			inline void operator( )( sqlite3 *ptr ) const noexcept {
+				sqlite3_close( ptr );
+			}
+		};
+
 		class Sqlite3Db {
-			sqlite3 *m_db;
-			bool m_is_open;
-			std::mutex m_exec_lock;
+			std::unique_ptr<sqlite3, sqlite_deleter> m_db;
+			daw::take_t<bool> m_is_open;
+			daw::take_t<std::mutex> m_exec_lock;
 
 		public:
 			using callback_t = std::function<void(
 			  std::vector<std::pair<daw::range::utf_range, Sqlite3DbCellValue>> result )>;
 
-			Sqlite3Db( Sqlite3Db const & ) = delete;
-
-			Sqlite3Db &operator=( Sqlite3Db const & ) = delete;
-
-			Sqlite3Db( );
-
-			~Sqlite3Db( );
-
-			Sqlite3Db( Sqlite3Db &&other );
-
-			Sqlite3Db &operator=( Sqlite3Db &&rhs );
+			Sqlite3Db( ) = default;
 
 			void open( daw::string_view filename );
-
 			void close( );
-
 			sqlite3 const *get_handle( ) const;
-
 			sqlite3 *get_handle( );
-
 			void exec( daw::range::utf_range sql, callback_t callback = nullptr );
 		}; // class Sqlite3Db
 	}    // namespace db
