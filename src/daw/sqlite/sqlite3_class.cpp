@@ -82,46 +82,33 @@ namespace daw::sqlite {
 		assert( m_db );
 		return m_db.get( );
 	}
+
 	daw::vector<std::string> database::tables( ) {
-
-		auto statement = prepared_statement(
-		  *this,
-		  R"sql(SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;)sql" );
-		int rc = SQLITE_ERROR;
-
 		auto result = daw::vector<std::string>{ };
-		while( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {
-			auto const column_count = statement.get_column_count( );
-			result.push_back( static_cast<std::string>( cell_value( statement, 0 ).get_text( ) ) );
-		}
-		if( SQLITE_DONE != rc ) {
-			throw sqlite3_exception( rc );
-		}
+		exec( prepared_statement( *this,
+		                          "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;" ),
+		      [&]( result_row_t row ) {
+			      result.push_back( static_cast<std::string>( row.front( ).second.get_text( ) ) );
+		      } );
 		return result;
 	}
 
 	bool database::has_table( daw::string_view table_name ) {
-		auto statement = prepared_statement(
-		  *this,
-		  R"sql(SELECT name FROM sqlite_schema WHERE type='table' and name=?;)sql" );
-		statement.bind( 1, cell_value( table_name ) );
-		int rc = SQLITE_ERROR;
-
-		if( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {
-			return true;
-		}
-		if( SQLITE_DONE != rc ) {
-			throw sqlite3_exception( rc );
-		}
-		return false;
+		return static_cast<bool>(
+		  exec( prepared_statement( *this,
+		                            "SELECT name FROM sqlite_schema WHERE type='table' and name=?;",
+		                            table_name ) ) );
 	}
 
-	result_row_t database::exec( prepared_statement statement, bool ignore_other_rows ) {
+	std::optional<result_row_t> database::exec( prepared_statement statement,
+	                                            bool ignore_other_rows ) {
 		assert( m_db );
 
 		int rc = SQLITE_ERROR;
-		result_row_t result;
-		if( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {
+		auto result = result_row_t{ };
+		std::size_t count = 0;
+		while( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {
+			++count;
 			auto const column_count = statement.get_column_count( );
 			result =
 			  result_row_t( daw::do_resize_and_overwrite, column_count, [&]( auto *ptr, std::size_t sz ) {
@@ -133,15 +120,22 @@ namespace daw::sqlite {
 				  return sz;
 			  } );
 		}
-		if( SQLITE_DONE != rc or not ignore_other_rows ) {
-			throw sqlite3_exception( rc );
+		if( rc == SQLITE_DONE ) {
+			if( count == 0 ) {
+				return std::optional<result_row_t>{ };
+			} else if( count == 1 ) {
+				return result;
+			}
 		}
-		return result;
+		if( rc == SQLITE_ROW and ignore_other_rows ) {
+			return std::optional<result_row_t>{ };
+		}
+		throw sqlite3_exception( rc );
 	}
 
-	result_row_t database::exec( std::string const &sql ) {
+	std::optional<result_row_t> database::exec( std::string const &sql, bool ignore_other_rows ) {
 		assert( m_db );
-		return exec( prepared_statement( *this, sql ) );
+		return exec( prepared_statement( *this, sql ), ignore_other_rows );
 	}
 
 	database::database( std::filesystem::path filename ) {
@@ -156,7 +150,7 @@ namespace daw::sqlite {
 		                              static_cast<int>( sql.size( ) ),
 		                              &m_statement,
 		                              nullptr );
-		if( SQLITE_OK != rc ) {
+		if( rc != SQLITE_OK ) {
 			m_statement = nullptr;
 			throw sqlite3_exception( rc );
 		}
@@ -236,7 +230,7 @@ namespace daw::sqlite {
 
 	void prepared_statement::reset( ) {
 		auto rc = sqlite3_reset( m_statement );
-		if( SQLITE_OK != rc ) {
+		if( rc != SQLITE_OK ) {
 			throw sqlite3_exception( rc );
 		}
 	}
@@ -287,7 +281,7 @@ namespace daw::sqlite {
 			std::cerr << "Unknown sqlite3 column type returned" << std::endl;
 			std::terminate( );
 		}
-		if( SQLITE_OK != rc ) {
+		if( rc != SQLITE_OK ) {
 			throw sqlite3_exception( rc );
 		}
 	}

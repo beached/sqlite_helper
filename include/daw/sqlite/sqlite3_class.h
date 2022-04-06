@@ -33,10 +33,10 @@
 #include <cstdint>
 #include <exception>
 #include <filesystem>
-#include <functional>
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <sqlite3.h>
 #include <utility>
 
@@ -78,7 +78,7 @@ namespace daw::sqlite {
 		  : prepared_statement( db, sql ) {
 			[&]<std::size_t... Is>( std::index_sequence<Is...> ) {
 				bind( 1, cell_value( DAW_FWD( param ) ) );
-				(void)( ( bind( Is + 2, DAW_FWD( params ) ), 1 ) + ... );
+				(void)( ( bind( Is + 2, DAW_FWD( params ) ), 1 ) + ... + 0 );
 			}
 			( std::make_index_sequence<sizeof...( Params )>{ } );
 		}
@@ -227,8 +227,9 @@ namespace daw::sqlite {
 		daw::vector<std::string> tables( );
 		bool has_table( daw::string_view table_name );
 
-		result_row_t exec( prepared_statement statement, bool isnore_other_rows = true );
-		result_row_t exec( std::string const &sql );
+		std::optional<result_row_t> exec( prepared_statement statement,
+		                                  bool ignore_other_rows = false );
+		std::optional<result_row_t> exec( std::string const &sql, bool ignore_other_rows = false );
 
 		template<exec_callback Callback>
 		void exec( prepared_statement statement, Callback cb ) {
