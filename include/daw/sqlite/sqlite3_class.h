@@ -206,9 +206,10 @@ namespace daw::sqlite {
 		};
 	} // namespace sqlite_impl
 
+	using result_cell_t = std::pair<daw::string_view, cell_value>;
+	using result_row_t = daw::vector<result_cell_t>;
 	template<typename T>
-	concept exec_callback =
-	  std::is_invocable_v<T, daw::vector<std::pair<daw::string_view, cell_value>>>;
+	concept exec_callback = std::is_invocable_v<T, result_row_t>;
 
 	class database {
 		std::unique_ptr<sqlite3, sqlite_impl::sqlite_deleter> m_db;
@@ -226,8 +227,8 @@ namespace daw::sqlite {
 		daw::vector<std::string> tables( );
 		bool has_table( daw::string_view table_name );
 
-		void exec( prepared_statement statement );
-		void exec( std::string const &sql );
+		result_row_t exec( prepared_statement statement, bool isnore_other_rows = true );
+		result_row_t exec( std::string const &sql );
 
 		template<exec_callback Callback>
 		void exec( prepared_statement statement, Callback cb ) {
@@ -236,19 +237,18 @@ namespace daw::sqlite {
 			int rc = SQLITE_ERROR;
 
 			while( SQLITE_ROW == ( rc = sqlite3_step( statement.get( ) ) ) ) {
-				using cell_t = std::pair<daw::string_view, cell_value>;
 				auto const column_count = statement.get_column_count( );
-				cb( daw::vector<cell_t>( daw::do_resize_and_overwrite,
-				                         column_count,
-				                         [&]( auto *ptr, std::size_t sz ) {
-					                         for( size_t column = 0; column != column_count; ++column ) {
-						                         std::construct_at(
-						                           ptr + column,
-						                           std::make_pair( statement.get_column_name( column ),
-						                                           cell_value( statement, column ) ) );
-					                         }
-					                         return sz;
-				                         } ) );
+				cb( result_row_t( daw::do_resize_and_overwrite,
+				                  column_count,
+				                  [&]( auto *ptr, std::size_t sz ) {
+					                  for( size_t column = 0; column != column_count; ++column ) {
+						                  std::construct_at(
+						                    ptr + column,
+						                    std::make_pair( statement.get_column_name( column ),
+						                                    cell_value( statement, column ) ) );
+					                  }
+					                  return sz;
+				                  } ) );
 			}
 			if( SQLITE_DONE != rc ) {
 				throw sqlite3_exception( rc );
