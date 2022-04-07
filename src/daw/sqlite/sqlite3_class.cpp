@@ -112,6 +112,17 @@ namespace daw::sqlite {
 		open( filename );
 	}
 
+	sqlite3 *database::release( ) {
+		m_is_open.reset( );
+		return m_db.release( );
+	}
+
+	database::database( sqlite3 *db )
+	  : m_db( db )
+	  , m_is_open( true ) {
+		assert( db );
+	}
+
 	namespace {
 		void delete_text_or_blob( void *val ) {
 			auto ptr = static_cast<char const *>( val );

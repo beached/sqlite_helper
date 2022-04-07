@@ -26,7 +26,6 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
-#include <mutex>
 #include <sqlite3.h>
 #include <utility>
 
@@ -40,18 +39,27 @@ namespace daw::sqlite {
 	} // namespace sqlite_impl
 
 	class database {
-		std::unique_ptr<sqlite3, sqlite_impl::sqlite_deleter> m_db;
-		daw::take_t<bool> m_is_open;
-		daw::take_t<std::mutex> m_exec_lock;
+		std::unique_ptr<sqlite3, sqlite_impl::sqlite_deleter> m_db = { };
+		daw::take_t<bool> m_is_open = { };
 
 	public:
 		explicit database( ) = default;
+
+		/***
+		 * @brief Open an existing or creat a new sqlite database at the path specified
+		 */
 		explicit database( std::filesystem::path filename );
+
+		/***
+		 * @brief Give ownership of an existing sqlite db
+		 */
+		explicit database( sqlite3 *db );
 
 		void open( std::filesystem::path filename );
 		void close( );
 		sqlite3 const *get_handle( ) const;
 		sqlite3 *get_handle( );
+		sqlite3 *release( );
 		daw::vector<std::string> tables( );
 		bool has_table( daw::string_view table_name );
 
