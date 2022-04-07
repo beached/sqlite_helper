@@ -25,7 +25,8 @@ int main( ) {
 		std::cout << tbl << '\n';
 	}
 
-	std::string const sql = "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;";
+	static constexpr daw::string_view sql =
+	  "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;";
 	{
 		// Test that an error occurs when more than 1 row is returned from db.exec without callback and
 		// without specifying to ignore them

@@ -86,7 +86,8 @@ namespace daw::sqlite {
 	}
 
 	daw::vector<std::string> database::tables( ) {
-		std::string const sql = "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;";
+		static constexpr daw::string_view sql =
+		  "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;";
 		auto first = exec( prepared_statement( *this, sql ) );
 		auto last = first.end( );
 		auto const row_count = first.count( );
@@ -104,7 +105,8 @@ namespace daw::sqlite {
 	}
 
 	bool database::has_table( daw::string_view table_name ) {
-		std::string const sql = "SELECT name FROM sqlite_schema WHERE type='table' and name=?;";
+		static constexpr daw::string_view sql =
+		  "SELECT name FROM sqlite_schema WHERE type='table' and name=?;";
 		auto const row_count = exec( prepared_statement( *this, sql, table_name ) ).count( );
 		assert( row_count <= 1 );
 		return row_count == 1;
