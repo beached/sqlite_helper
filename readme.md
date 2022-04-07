@@ -27,13 +27,15 @@ auto db = daw::sqlite::database( "file.sqlite" );
 #### Querying a database
 
 ```c++
-auto it = db.exec(
-    daw::sqlite::prepared_statement( 
+auto it = db.exec( 
       db, 
-      "SELECT colA, colB FROM tbl WHERE name=?", "foo" 
-    ) );
+      "SELECT colA, colB FROM tbl WHERE name=?",
+      "foo" 
+    );
 ```
+
 #### Using query results
+
 ```c++
 std::cout << "Found " << it.count( ) << " rows\n";
 for( auto const & row: it ) {
