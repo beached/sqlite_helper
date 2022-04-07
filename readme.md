@@ -28,7 +28,6 @@ auto db = daw::sqlite::database( "file.sqlite" );
 
 ```c++
 auto it = db.exec( 
-      db, 
       "SELECT colA, colB FROM tbl WHERE name=?",
       "foo" 
     );
