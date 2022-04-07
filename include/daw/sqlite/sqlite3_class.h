@@ -73,7 +73,11 @@ namespace daw::sqlite {
 		bool has_table( daw::string_view table_name );
 
 		query_iterator exec( prepared_statement statement );
-		query_iterator exec( std::string const &sql );
+		query_iterator exec( shared_prepared_statement statement );
+		query_iterator exec( daw::string_view sql ) {
+			assert( m_db );
+			return exec( prepared_statement( *this, sql ) );
+		}
 
 		template<exec_callback Callback>
 		void exec( prepared_statement statement, Callback cb ) {

@@ -44,6 +44,11 @@ namespace daw::sqlite {
 	public:
 		explicit query_iterator( ) = default;
 
+		explicit query_iterator( shared_prepared_statement statement )
+		  : m_statement( DAW_MOVE( statement ) ) {
+			operator++( );
+		}
+
 		const_reference operator*( ) noexcept;
 
 		inline const_pointer operator->( ) noexcept {

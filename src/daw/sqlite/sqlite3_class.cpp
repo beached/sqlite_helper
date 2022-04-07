@@ -115,9 +115,9 @@ namespace daw::sqlite {
 		return query_iterator( DAW_MOVE( statement ) );
 	}
 
-	query_iterator database::exec( std::string const &sql ) {
+	query_iterator database::exec( shared_prepared_statement statement ) {
 		assert( m_db );
-		return exec( prepared_statement( *this, sql ) );
+		return query_iterator( DAW_MOVE( statement ) );
 	}
 
 	database::database( std::filesystem::path filename ) {
