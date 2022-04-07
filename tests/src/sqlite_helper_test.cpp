@@ -39,10 +39,5 @@ int main( ) {
 
 			std::cout << row.front( ).value.get_text( ) << '\n';
 		}
-
-		std::cout << "Table names 3\n";
-		db.exec( sql, []( daw::sqlite::result_row_t const &row ) {
-			std::cout << row.front( ).value.get_text( ) << '\n';
-		} );
 	}
 }

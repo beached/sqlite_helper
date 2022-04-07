@@ -61,21 +61,11 @@ namespace daw::sqlite {
 		query_iterator exec( prepared_statement statement );
 		query_iterator exec( shared_prepared_statement statement );
 
-		query_iterator exec( daw::string_view sql ) {
+		template<typename... Params>
+		requires( Parameters<Params...> ) //
+		  query_iterator exec( daw::string_view sql, Params &&...params ) {
 			assert( m_db );
-			return exec( prepared_statement( *this, sql ) );
-		}
-
-		void exec( PreparedStatement auto statement, exec_callback auto callback ) {
-			assert( m_db );
-			for( auto &&row : exec( DAW_MOVE( statement ) ) ) {
-				callback( DAW_FWD( row ) );
-			}
-		}
-
-		void exec( daw::string_view sql, exec_callback auto callback ) {
-			assert( m_db );
-			exec( prepared_statement( *this, sql ), DAW_MOVE( callback ) );
+			return exec( shared_prepared_statement( *this, sql, DAW_FWD( params )... ) );
 		}
 	}; // class database
 } // namespace daw::sqlite
