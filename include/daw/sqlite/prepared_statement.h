@@ -159,4 +159,9 @@ namespace daw::sqlite {
 
 		bool operator!=( shared_prepared_statement const & ) const = default;
 	};
+
+	template<typename T>
+	concept PreparedStatement = requires {
+		typename T::i_am_a_prepared_statement;
+	};
 } // namespace daw::sqlite
