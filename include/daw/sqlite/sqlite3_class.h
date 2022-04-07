@@ -39,9 +39,6 @@ namespace daw::sqlite {
 		};
 	} // namespace sqlite_impl
 
-	template<typename T>
-	concept exec_callback = std::is_invocable_v<T, result_row_t>;
-
 	class database {
 		std::unique_ptr<sqlite3, sqlite_impl::sqlite_deleter> m_db;
 		daw::take_t<bool> m_is_open;
