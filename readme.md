@@ -13,7 +13,7 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/beached/sqlite_helper
 )
 # ....
-target_link_libraries(MyTarget daw::daw-sql-helper)
+target_link_libraries(MyTarget daw::daw-sqlite-helper)
 ```
 
 ## Usage
