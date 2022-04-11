@@ -61,7 +61,7 @@ namespace daw::sqlite {
 			operator++( );
 		}
 
-		constexpr bool operator==( iterator_type const &rhs ) const {
+		inline bool operator==( iterator_type const &rhs ) const {
 			if( ( m_statement == rhs.m_statement ) and ( m_row == rhs.m_row ) ) {
 				return true;
 			}
@@ -70,7 +70,7 @@ namespace daw::sqlite {
 			}
 			return not m_statement or not rhs.m_statement;
 		}
-		constexpr bool operator!=( iterator_type const & ) const = default;
+		inline bool operator!=( iterator_type const & ) const = default;
 
 		inline iterator_type begin( ) {
 			return *this;
@@ -80,11 +80,11 @@ namespace daw::sqlite {
 			return iterator_type{ };
 		}
 
-		constexpr std::size_t row( ) const {
+		inline std::size_t row( ) const {
 			return m_row;
 		}
 
-		constexpr void reset( ) {
+		inline void reset( ) {
 			if( m_statement ) {
 				m_statement.reset( );
 				m_row = static_cast<std::size_t>( -1 );
