@@ -39,7 +39,7 @@ namespace daw::sqlite {
 		[[nodiscard]] constexpr cell_value const &operator[](
 			daw::string_view name ) const {
 			auto const idx = get_index_of( name );
-			daw_ensure( idx.has_value( ), "Column not found" );
+			daw_ensure( idx.has_value( ) );
 			return m_columns[*idx].value;
 		}
 
