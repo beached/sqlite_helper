@@ -10,35 +10,32 @@
 
 #include <daw/daw_string_view.h>
 
+#include <concepts>
 #include <sstream>
 #include <string>
 
-namespace daw {
-	namespace db {
+namespace daw::db {
+	struct kv_store {
+		explicit kv_store( daw::string_view filename );
+		virtual ~kv_store( );
+		[[nodiscard]] std::string operator( )( size_t hash );
 
-		struct kv_store {
-			kv_store( daw::string_view filename );
-			virtual ~kv_store( );
-			std::string operator( )( size_t hash );
+		template<typename Key>
+			requires( not std::same_as<std::size_t, Key> )
+		[[nodiscard]] std::string operator( )( Key key ) {
+			static std::hash<Key> const hash{};
+			return get( hash( key ) );
+		}
 
-			template<typename Key, typename std::enable_if_t<!std::is_same<size_t, Key>::value>>
-			std::string operator( )( Key key ) {
-				static std::hash<Key> const hash;
-				return get( hash( key ) );
-			}
-
-			template<typename Key,
-			         typename Value,
-			         typename std::enable_if_t<!std::is_same<std::string, Value>::value>>
-			Value operator( )( Key key ) const {
-				std::stringstream ss;
-				auto tmp = et( hash( key ) );
-				ss << tmp;
-				Value result;
-				ss >> result;
-				return result;
-			}
-		};
-
-	} // namespace db
-} // namespace daw
+		template<typename Key, typename Value>
+			requires( not std::same_as<std::string, Value> )
+		[[nodiscard]] Value operator( )( Key key ) const {
+			std::stringstream ss;
+			auto tmp = get( hash( key ) );
+			ss << tmp;
+			Value result;
+			ss >> result;
+			return result;
+		}
+	};
+}

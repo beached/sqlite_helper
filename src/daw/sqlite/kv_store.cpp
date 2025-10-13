@@ -11,15 +11,12 @@
 
 #include <daw/daw_string_view.h>
 
-namespace daw {
-	namespace db {
-		kv_store::kv_store( daw::string_view filename ) {}
+namespace daw::db {
+	kv_store::kv_store( daw::string_view filename ) {}
 
-		kv_store::~kv_store( ) {}
+	kv_store::~kv_store( ) = default;
 
-		std::string kv_store::operator( )( size_t hash ) {
-			return "";
-		}
-
-	} // namespace db
-} // namespace daw
+	std::string kv_store::operator( )( size_t hash ) {
+		return "";
+	}
+}

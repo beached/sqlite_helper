@@ -7,8 +7,7 @@
 //
 
 #include <daw/sqlite/sqlite3_class.h>
-
-#include <iostream>
+#include <daw/daw_print.h>
 
 int main( ) {
 	// auto db = database( "db.sqlite" );
@@ -28,16 +27,17 @@ int main( ) {
 	static constexpr daw::string_view sql =
 	  "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;";
 	{
-		// Test that an error occurs when more than 1 row is returned from db.exec without callback and
-		// without specifying to ignore them
+		// Test that an error occurs when more than 1 row is returned from db.exec
+		// without callback and without specifying to ignore them
 		auto it = db.exec( sql );
 		auto const d = std::distance( it, it.end( ) );
 		assert( d == 2 );
 
 		std::cout << "Table names 2\n";
 		for( auto const &row : db.exec( sql ) ) {
-
-			std::cout << row.front( ).value.get_text( ) << '\n';
+			auto value = row["name"];
+			daw::println( "value.get_text( ): {}", value.get_text( ) );
+			daw::println( "row.front( ).value.get_text( ): {}", row.front( ).value.get_text( ) );
 		}
 	}
 }

@@ -8,45 +8,39 @@
 
 #pragma once
 
-#include "cell_value.h"
-#include "prepared_statement.h"
-#include "query_iterator.h"
-#include "sqlite3_exception.h"
+#include "daw/sqlite/cell_value.h"
+#include "daw/sqlite/prepared_statement.h"
+#include "daw/sqlite/query_iterator.h"
 
-#include <daw/daw_concepts.h>
-#include <daw/daw_contiguous_view.h>
-#include <daw/daw_move.h>
 #include <daw/daw_string_view.h>
 #include <daw/daw_take.h>
 #include <daw/vector.h>
 
-#include <cstddef>
-#include <cstdint>
 #include <exception>
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <sqlite3.h>
-#include <utility>
 
 namespace daw::sqlite {
 	namespace sqlite_impl {
 		struct sqlite_deleter {
-			inline void operator( )( sqlite3 *ptr ) const noexcept {
+			DAW_CPP23_STATIC_CALL_OP void operator( )(
+				sqlite3 *ptr ) DAW_CPP23_STATIC_CALL_OP_CONST noexcept {
 				sqlite3_close( ptr );
 			}
 		};
 	} // namespace sqlite_impl
 
 	class database {
-		std::unique_ptr<sqlite3, sqlite_impl::sqlite_deleter> m_db = { };
-		daw::take_t<bool> m_is_open = { };
+		std::unique_ptr<sqlite3, sqlite_impl::sqlite_deleter> m_db{};
+		daw::take_t<bool> m_is_open{};
 
 	public:
 		explicit database( ) = default;
 
 		/***
-		 * @brief Open an existing or creat a new sqlite database at the path specified
+		 * @brief Open an existing or creat a new sqlite database at the path
+		 * specified
 		 */
 		explicit database( std::filesystem::path filename );
 
@@ -57,20 +51,22 @@ namespace daw::sqlite {
 
 		void open( std::filesystem::path filename );
 		void close( );
-		sqlite3 const *get_handle( ) const;
-		sqlite3 *get_handle( );
-		sqlite3 *release( );
-		daw::vector<std::string> tables( );
-		bool has_table( daw::string_view table_name );
+		[[nodiscard]] sqlite3 const *get_handle( ) const;
+		[[nodiscard]] sqlite3 *get_handle( );
+		[[nodiscard]] sqlite3 *release( );
+		[[nodiscard]] daw::vector<std::string> tables( );
+		[[nodiscard]] bool has_table( daw::string_view table_name );
 
 		query_iterator exec( prepared_statement statement );
 		query_iterator exec( shared_prepared_statement statement );
 
 		template<typename... Params>
-		requires( Parameters<Params...> ) //
-		  query_iterator exec( daw::string_view sql, Params &&...params ) {
+			requires( Parameters<Params...> ) //
+		query_iterator exec( daw::string_view sql,
+		                     Params &&... params ) {
 			assert( m_db );
-			return exec( shared_prepared_statement( *this, sql, DAW_FWD( params )... ) );
+			return exec(
+				shared_prepared_statement( *this, sql, DAW_FWD( params )... ) );
 		}
 	}; // class database
-} // namespace daw::sqlite
+}    // namespace daw::sqlite

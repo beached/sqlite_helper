@@ -19,6 +19,7 @@
 #include <sqlite3.h>
 #include <sstream>
 #include <string>
+#include <utility>
 
 namespace daw::sqlite {
 	namespace types {
@@ -43,14 +44,15 @@ namespace daw::sqlite {
 	}
 
 	sqlite3_exception::sqlite3_exception( std::string message )
-	  : m_message( DAW_MOVE( message ) ) {}
+	  : m_message( std::move( message ) ) {}
 
 	void database::open( std::filesystem::path filename ) {
 		sqlite3 *ptr = nullptr;
 		auto result = sqlite3_open( filename.c_str( ), &ptr );
 		if( result ) {
-			throw sqlite3_exception( "Could not open database " + static_cast<std::string>( filename ) +
-			                         ": " + sqlite3_errmsg( ptr ) );
+			throw sqlite3_exception( "Could not open database " +
+			                         static_cast<std::string>( filename ) + ": " +
+			                         sqlite3_errmsg( ptr ) );
 		}
 		m_db.reset( ptr );
 		m_is_open = true;
@@ -82,7 +84,9 @@ namespace daw::sqlite {
 		  row_count,
 		  [&]( std::string *ptr, std::size_t sz ) {
 			  while( first != last ) {
-				  std::construct_at( ptr, static_cast<std::string>( first->front( ).value.get_text( ) ) );
+				  std::construct_at(
+				    ptr,
+				    static_cast<std::string>( first->front( ).value.get_text( ) ) );
 				  ++first;
 				  ++ptr;
 			  }
@@ -100,12 +104,12 @@ namespace daw::sqlite {
 
 	query_iterator database::exec( prepared_statement statement ) {
 		assert( m_db );
-		return query_iterator( DAW_MOVE( statement ) );
+		return query_iterator( std::move( statement ) );
 	}
 
 	query_iterator database::exec( shared_prepared_statement statement ) {
 		assert( m_db );
-		return query_iterator( DAW_MOVE( statement ) );
+		return query_iterator( std::move( statement ) );
 	}
 
 	database::database( std::filesystem::path filename ) {

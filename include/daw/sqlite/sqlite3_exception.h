@@ -20,7 +20,7 @@ namespace daw::sqlite {
 		explicit sqlite3_exception( int err_no );
 		explicit sqlite3_exception( std::string message );
 
-		char const *what( ) const noexcept override;
-		int error( ) const;
-	}; // struct sqlite3_exception
-} // namespace daw::db
+		[[nodiscard]] char const *what( ) const noexcept override;
+		[[nodiscard]] int error( ) const;
+	};
+}

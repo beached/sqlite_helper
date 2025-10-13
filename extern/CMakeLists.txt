@@ -8,20 +8,20 @@
 
 include(FetchContent)
 
-#set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 set(DAW_ENABLE_TESTING OFF)
 
-FetchContent_Declare(
-       	daw_header_libraries
-        GIT_REPOSITORY https://github.com/beached/header_libraries
-        GIT_TAG master 
-)
+if (NOT DAW_TARGET_HEADER_LIBRARIES)
+    FetchContent_Declare(
+            daw-header-libraries
+            GIT_REPOSITORY https://github.com/beached/header_libraries.git
+    )
+    FetchContent_MakeAvailable(daw-header-libraries)
+endif ()
 
 FetchContent_Declare(
         daw_utf_range
         GIT_REPOSITORY https://github.com/beached/utf_range
         GIT_TAG master
 )
-
-FetchContent_MakeAvailable( daw_header_libraries daw_utf_range )
+FetchContent_MakeAvailable(daw_utf_range)
 

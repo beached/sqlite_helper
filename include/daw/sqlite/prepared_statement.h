@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "cell_value.h"
-#include "sqlite3_exception.h"
+#include "daw/sqlite/cell_value.h"
+#include "daw/sqlite/sqlite3_exception.h"
 
 #include <daw/daw_string_view.h>
 
@@ -26,74 +26,75 @@ namespace daw::sqlite {
 		};
 	} // namespace ps_impl
 
-	struct shared_prepared_statement;
+	class shared_prepared_statement;
 
 	template<typename... Ts>
 	concept Parameters = ( convertible_to<Ts, cell_value> and ... );
 
 	class prepared_statement {
-		std::unique_ptr<sqlite3_stmt, ps_impl::sqlite3_stmt_deleter> m_statement = nullptr;
+		std::unique_ptr<sqlite3_stmt, ps_impl::sqlite3_stmt_deleter> m_statement =
+			nullptr;
 
 	public:
 		using i_am_a_prepared_statement = void;
 
-		prepared_statement( ) = default;
+		explicit prepared_statement( ) = default;
 		prepared_statement( database &db, daw::string_view sql );
 
 		friend class ::daw::sqlite::shared_prepared_statement;
 
 		template<typename Param, typename... Params>
-		requires( Parameters<Param, Params...> ) //
-		  prepared_statement( database &db, daw::string_view sql, Param &&param, Params &&...params )
-		  : prepared_statement( db, sql ) {
+			requires( Parameters<Param, Params...> ) //
+		prepared_statement( database &db, daw::string_view sql, Param &&param,
+		                    Params &&... params )
+			: prepared_statement( db, sql ) {
 			[&]<std::size_t... Is>( std::index_sequence<Is...> ) {
 				bind( 1, cell_value( DAW_FWD( param ) ) );
 				(void)( ( bind( Is + 2, DAW_FWD( params ) ), 1 ) + ... + 0 );
-			}
-			( std::make_index_sequence<sizeof...( Params )>{ } );
+			}( std::make_index_sequence<sizeof...( Params )>{} );
 		}
 
-		sqlite3_stmt *get( );
+		[[nodiscard]] sqlite3_stmt *get( );
 
-		size_t get_column_count( );
+		[[nodiscard]] std::size_t get_column_count( );
 
-		column_type get_column_type( size_t column );
+		[[nodiscard]] column_type get_column_type( std::size_t column );
 
-		types::text_t get_column_name( size_t column );
+		[[nodiscard]] types::text_t get_column_name( std::size_t column );
 
-		types::real_t get_column_float( size_t column );
+		[[nodiscard]] types::real_t get_column_float( std::size_t column );
 
-		types::integer_t get_column_integer( size_t column );
+		[[nodiscard]] types::integer_t get_column_integer( std::size_t column );
 
-		types::text_t get_column_text( size_t column );
+		[[nodiscard]] types::text_t get_column_text( std::size_t column );
 
-		bool is_column_null( size_t column );
+		[[nodiscard]] bool is_column_null( std::size_t column );
 
-		types::blob_t get_column_blob( size_t column );
+		[[nodiscard]] types::blob_t get_column_blob( std::size_t column );
 
-		bool is_good( ) const;
+		[[nodiscard]] bool is_good( ) const;
 
 		void reset( );
 		void reset_to_default_init( );
 
-		void bind( size_t index, cell_value const &value );
-		void bind( size_t index ); // bind a null to that value
+		void bind( std::size_t index, cell_value const &value );
+		void bind( std::size_t index ); // bind a null to that value
 
-		explicit inline operator bool( ) const {
-			return static_cast<bool>( m_statement );
+		explicit operator bool( ) const {
+			return static_cast<bool>(m_statement);
 		}
 
-		inline auto operator<=>( prepared_statement const &rhs ) const {
-			// clang-format off
+		// clang-format off
+		[[nodiscard]] auto operator<=>( prepared_statement const &rhs ) const {
 			return m_statement.get( ) <=> rhs.m_statement.get( );
-			// clang-format on
 		}
+		// clang-format on
 
-		inline bool operator==( prepared_statement const &rhs ) const {
+		[[nodiscard]] bool operator==( prepared_statement const &rhs ) const {
 			return m_statement.get( ) == rhs.m_statement.get( );
 		}
 
-		bool operator!=( prepared_statement const & ) const = default;
+		[[nodiscard]] bool operator!=( prepared_statement const & ) const = default;
 	};
 
 	class shared_prepared_statement {
@@ -102,69 +103,70 @@ namespace daw::sqlite {
 	public:
 		using i_am_a_prepared_statement = void;
 
-		shared_prepared_statement( ) = default;
+		explicit shared_prepared_statement( ) = default;
 		shared_prepared_statement( database &db, daw::string_view sql );
 		shared_prepared_statement( prepared_statement statement );
 
 		template<typename Param, typename... Params>
-		requires( convertible_to<Param, cell_value> and ( convertible_to<Params, cell_value> and ... ) )
-		  shared_prepared_statement( database &db,
-		                             daw::string_view sql,
-		                             Param &&param,
-		                             Params &&...params )
-		  : shared_prepared_statement( db, sql ) {
+			requires( convertible_to<Param, cell_value> and
+			          ( convertible_to<Params, cell_value> and ... ) )
+		shared_prepared_statement( database &db, daw::string_view sql,
+		                           Param &&param, Params &&... params )
+			: shared_prepared_statement( db, sql ) {
 			[&]<std::size_t... Is>( std::index_sequence<Is...> ) {
 				bind( 1, cell_value( DAW_FWD( param ) ) );
 				(void)( ( bind( Is + 2, DAW_FWD( params ) ), 1 ) + ... + 0 );
-			}
-			( std::make_index_sequence<sizeof...( Params )>{ } );
+			}( std::make_index_sequence<sizeof...( Params )>{} );
 		}
 
-		sqlite3_stmt *get( );
+		[[nodiscard]] sqlite3_stmt *get( );
 
-		size_t get_column_count( );
+		[[nodiscard]] std::size_t get_column_count( );
 
-		column_type get_column_type( size_t column );
+		[[nodiscard]] column_type get_column_type( std::size_t column );
 
-		types::text_t get_column_name( size_t column );
+		[[nodiscard]] types::text_t get_column_name( std::size_t column );
 
-		types::real_t get_column_float( size_t column );
+		[[nodiscard]] types::real_t get_column_float( std::size_t column );
 
-		types::integer_t get_column_integer( size_t column );
+		[[nodiscard]] types::integer_t get_column_integer( std::size_t column );
 
-		types::text_t get_column_text( size_t column );
+		[[nodiscard]] types::text_t get_column_text( std::size_t column );
 
-		bool is_column_null( size_t column );
+		[[nodiscard]] bool is_column_null( std::size_t column );
 
-		types::blob_t get_column_blob( size_t column );
+		[[nodiscard]] types::blob_t get_column_blob( std::size_t column );
 
-		bool is_good( ) const;
+		[[nodiscard]] bool is_good( ) const;
 
 		void reset( );
 		void reset_to_default_init( );
 
-		void bind( size_t index, cell_value const &value );
-		void bind( size_t index ); // bind a null to that value
+		void bind( std::size_t index, cell_value const &value );
+		void bind( std::size_t index ); // bind a null to that value
 
-		explicit inline operator bool( ) const {
-			return static_cast<bool>( m_statement );
+		explicit operator bool( ) const {
+			return static_cast<bool>(m_statement);
 		}
 
-		inline auto operator<=>( shared_prepared_statement const &rhs ) const {
-			// clang-format off
+		// clang-format off
+		[[nodiscard]] auto operator<=>( shared_prepared_statement const &rhs ) const {
 			return m_statement.get( ) <=> rhs.m_statement.get( );
-			// clang-format on
 		}
+		// clang-format on
 
-		inline bool operator==( shared_prepared_statement const &rhs ) const {
+		[[nodiscard]] bool operator
+		==( shared_prepared_statement const &rhs ) const {
 			return m_statement.get( ) == rhs.m_statement.get( );
 		}
 
-		bool operator!=( shared_prepared_statement const & ) const = default;
+		[[nodiscard]] bool operator!=( shared_prepared_statement const & ) const
+		= default;
 	};
 
 	template<typename T>
-	concept PreparedStatement = requires {
+	concept PreparedStatement = requires
+	{
 		typename T::i_am_a_prepared_statement;
 	};
 } // namespace daw::sqlite
