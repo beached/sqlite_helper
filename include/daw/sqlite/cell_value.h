@@ -74,6 +74,14 @@ namespace daw::sqlite {
 			return *ptr;
 		}
 
+		[[nodiscard]] constexpr bool get_bool( ) const {
+			auto *ptr = std::get_if<types::integer_t>( &m_value );
+			if(not ptr) {
+				throw sqlite3_exception( "Cell Value is not of type Integer" );
+			}
+			return static_cast<bool>(*ptr);
+		}
+
 		[[nodiscard]] constexpr types::integer_t const &get_integer( ) const {
 			auto *ptr = std::get_if<types::integer_t>( &m_value );
 			if(not ptr) {
