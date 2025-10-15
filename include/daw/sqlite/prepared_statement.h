@@ -29,7 +29,7 @@ namespace daw::sqlite {
 	class shared_prepared_statement;
 
 	template<typename... Ts>
-	concept Parameters = ( convertible_to<Ts, cell_value> and ... );
+	concept Parameters = ( constructible_from<cell_value, Ts> and ... );
 
 	class prepared_statement {
 		std::unique_ptr<sqlite3_stmt, ps_impl::sqlite3_stmt_deleter> m_statement =
@@ -108,8 +108,7 @@ namespace daw::sqlite {
 		shared_prepared_statement( prepared_statement statement );
 
 		template<typename Param, typename... Params>
-			requires( convertible_to<Param, cell_value> and
-			          ( convertible_to<Params, cell_value> and ... ) )
+			requires Parameters<Param, Params...>
 		shared_prepared_statement( database &db, daw::string_view sql,
 		                           Param &&param, Params &&... params )
 			: shared_prepared_statement( db, sql ) {

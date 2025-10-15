@@ -25,16 +25,16 @@ int main( ) {
 	}
 
 	static constexpr daw::string_view sql =
-	  "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name;";
+	  "SELECT name FROM sqlite_schema WHERE type='?' ORDER BY name;";
 	{
 		// Test that an error occurs when more than 1 row is returned from db.exec
 		// without callback and without specifying to ignore them
-		auto it = db.exec( sql );
+		auto it = db.exec( sql, "table" );
 		auto const d = std::distance( it, it.end( ) );
 		assert( d == 2 );
 
 		std::cout << "Table names 2\n";
-		for( auto const &row : db.exec( sql ) ) {
+		for( auto const &row : db.exec( sql, "table" ) ) {
 			auto value = row["name"];
 			daw::println( "value.get_text( ): {}", value.get_text( ) );
 			daw::println( "row.front( ).value.get_text( ): {}", row.front( ).value.get_text( ) );

@@ -131,5 +131,4 @@ namespace daw::sqlite {
 			: name( n )
 			  , value( v ) {}
 	};
-
 } // namespace daw::sqlite
