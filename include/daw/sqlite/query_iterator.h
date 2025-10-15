@@ -72,7 +72,7 @@ namespace daw::sqlite {
 
 		[[nodiscard]] bool operator!=( iterator_type const & ) const = default;
 
-		[[nodiscard]] iterator_type begin( ) {
+		[[nodiscard]] iterator_type begin( ) const {
 			return *this;
 		}
 
