@@ -13,6 +13,7 @@
 #include <daw/daw_string_view.h>
 #include <daw/daw_ensure.h>
 #include <daw/daw_move.h>
+#include <daw/vector.h>
 
 #include <cstdint>
 #include <ranges>

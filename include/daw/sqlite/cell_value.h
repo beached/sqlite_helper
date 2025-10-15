@@ -12,7 +12,6 @@
 
 #include <daw/daw_contiguous_view.h>
 #include <daw/daw_string_view.h>
-#include <daw/vector.h>
 
 #include <cstdint>
 #include <iostream>
@@ -45,23 +44,27 @@ namespace daw::sqlite {
 	public:
 		explicit cell_value( ) = default;
 
-		cell_value( prepared_statement &statement, size_t column );
-		cell_value( shared_prepared_statement &statement, size_t column );
+		explicit cell_value( prepared_statement &statement, size_t column );
+		explicit cell_value( shared_prepared_statement &statement, size_t column );
 
 
-		constexpr cell_value( types::real_t value )
-			: m_value{std::in_place_type<types::real_t>, value} {}
-
-		constexpr cell_value( types::integer_t value )
+		template<std::same_as<bool> Bool>
+		explicit constexpr cell_value( Bool value )
 			: m_value{std::in_place_type<types::integer_t>, value} {}
 
-		constexpr cell_value( types::text_t value )
+		explicit constexpr cell_value( types::real_t value )
+			: m_value{std::in_place_type<types::real_t>, value} {}
+
+		explicit constexpr cell_value( types::integer_t value )
+			: m_value{std::in_place_type<types::integer_t>, value} {}
+
+		explicit constexpr cell_value( types::text_t value )
 			: m_value{std::in_place_type<types::text_t>, value} {}
 
-		constexpr cell_value( types::blob_t value )
+		explicit constexpr cell_value( types::blob_t value )
 			: m_value{std::in_place_type<types::blob_t>, value} {}
 
-		DAW_CONSTEVAL cell_value( std::nullptr_t ) {}
+		explicit DAW_CONSTEVAL cell_value( std::nullptr_t ) {}
 
 		[[nodiscard]] constexpr types::real_t const &get_float( ) const {
 			auto *ptr = std::get_if<types::real_t>( &m_value );
