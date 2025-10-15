@@ -114,7 +114,8 @@ namespace daw::sqlite {
 			: shared_prepared_statement( db, sql ) {
 			[&]<std::size_t... Is>( std::index_sequence<Is...> ) {
 				bind( 1, cell_value( DAW_FWD( param ) ) );
-				(void)( ( bind( Is + 2, DAW_FWD( params ) ), 1 ) + ... + 0 );
+				(void)( ( bind( Is + 2, cell_value( DAW_FWD( params ) ) ), 1 ) + ... + 0
+				);
 			}( std::make_index_sequence<sizeof...( Params )>{} );
 		}
 
