@@ -14,7 +14,7 @@
 #include <sqlite3.h>
 
 namespace daw::sqlite {
-	query_iterator::const_reference query_iterator::operator*( ) noexcept {
+	query_iterator::const_reference query_iterator::front( ) {
 		if(not m_last_value) {
 			auto const column_count = m_statement.get_column_count( );
 			m_last_value = result_row_t(

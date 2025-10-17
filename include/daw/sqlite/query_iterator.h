@@ -48,11 +48,16 @@ namespace daw::sqlite {
 			operator++( );
 		}
 
-		[[nodiscard]] const_reference operator*( ) noexcept;
+		[[nodiscard]] const_reference front( );
 
-		[[nodiscard]] const_pointer operator->( ) noexcept {
+		[[nodiscard]] const_reference operator*( ) {
+			return front( );
+		}
+
+		[[nodiscard]] const_pointer operator->( ) {
 			return &( operator*( ) );
 		}
+
 
 		iterator_type &operator++( );
 
@@ -103,6 +108,10 @@ namespace daw::sqlite {
 			}
 			reset( );
 			return result;
+		}
+
+		[[nodiscard]] std::size_t size( ) {
+			return count( );
 		}
 
 		explicit operator bool( ) const {
