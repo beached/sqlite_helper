@@ -114,6 +114,10 @@ namespace daw::sqlite {
 			return count( );
 		}
 
+		[[nodiscard]] bool empty( ) {
+			return count( ) == 0u;
+		}
+
 		explicit operator bool( ) const {
 			return static_cast<bool>(m_statement);
 		}
