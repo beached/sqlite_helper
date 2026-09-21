@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "daw/sqlite/result_row.h"
 #include "daw/sqlite/prepared_statement.h"
+#include "daw/sqlite/result_row.h"
 
 #include <daw/vector.h>
 
@@ -31,12 +31,12 @@ namespace daw::sqlite {
 		friend class ::daw::sqlite::database;
 
 	private:
-		shared_prepared_statement m_statement{};
-		std::size_t m_row = static_cast<std::size_t>(-1);
-		std::optional<result_row_t> m_last_value{};
+		mutable shared_prepared_statement m_statement{ };
+		std::size_t m_row = static_cast<std::size_t>( -1 );
+		mutable std::optional<result_row_t> m_last_value{ };
 
 		explicit query_iterator( prepared_statement statement )
-			: m_statement( std::move( statement ) ) {
+		  : m_statement( std::move( statement ) ) {
 			operator++( );
 		}
 
@@ -44,20 +44,19 @@ namespace daw::sqlite {
 		explicit query_iterator( ) = default;
 
 		explicit query_iterator( shared_prepared_statement statement )
-			: m_statement( std::move( statement ) ) {
+		  : m_statement( std::move( statement ) ) {
 			operator++( );
 		}
 
-		[[nodiscard]] const_reference front( );
+		[[nodiscard]] const_reference front( ) const;
 
-		[[nodiscard]] const_reference operator*( ) {
+		[[nodiscard]] const_reference operator*( ) const {
 			return front( );
 		}
 
-		[[nodiscard]] const_pointer operator->( ) {
+		[[nodiscard]] const_pointer operator->( ) const {
 			return &( operator*( ) );
 		}
-
 
 		iterator_type &operator++( );
 
@@ -66,10 +65,10 @@ namespace daw::sqlite {
 		}
 
 		[[nodiscard]] bool operator==( iterator_type const &rhs ) const {
-			if(( m_statement == rhs.m_statement ) and ( m_row == rhs.m_row )) {
+			if( ( m_statement == rhs.m_statement ) and ( m_row == rhs.m_row ) ) {
 				return true;
 			}
-			if(m_row != rhs.m_row) {
+			if( m_row != rhs.m_row ) {
 				return false;
 			}
 			return not m_statement or not rhs.m_statement;
@@ -82,7 +81,7 @@ namespace daw::sqlite {
 		}
 
 		[[nodiscard]] static iterator_type end( ) {
-			return iterator_type{};
+			return iterator_type{ };
 		}
 
 		[[nodiscard]] std::size_t row( ) const {
@@ -90,19 +89,19 @@ namespace daw::sqlite {
 		}
 
 		void reset( ) {
-			if(m_statement) {
+			if( m_statement ) {
 				m_statement.reset( );
-				m_row = static_cast<std::size_t>(-1);
+				m_row = static_cast<std::size_t>( -1 );
 				operator++( );
 			}
 		}
 
 		[[nodiscard]] std::size_t count( ) {
 			auto f = *this;
-			auto result = static_cast<std::size_t>(-1);
+			auto result = static_cast<std::size_t>( -1 );
 			try {
-				result = static_cast<std::size_t>(std::distance( f, f.end( ) ));
-			} catch(...) {
+				result = static_cast<std::size_t>( std::distance( f, f.end( ) ) );
+			} catch( ... ) {
 				reset( );
 				throw;
 			}
@@ -119,7 +118,7 @@ namespace daw::sqlite {
 		}
 
 		explicit operator bool( ) const {
-			return static_cast<bool>(m_statement);
+			return static_cast<bool>( m_statement );
 		}
 	};
 } // namespace daw::sqlite
