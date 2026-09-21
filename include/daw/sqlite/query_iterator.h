@@ -54,6 +54,14 @@ namespace daw::sqlite {
 			return front( );
 		}
 
+		[[nodiscard]] result_cell_t operator[]( std::size_t idx ) const {
+			return front( )[idx];
+		}
+
+		[[nodiscard]] cell_value operator[]( daw::string_view name ) const {
+			return front( )[name];
+		}
+
 		[[nodiscard]] const_pointer operator->( ) const {
 			return &( operator*( ) );
 		}
@@ -73,8 +81,6 @@ namespace daw::sqlite {
 			}
 			return not m_statement or not rhs.m_statement;
 		}
-
-		[[nodiscard]] bool operator!=( iterator_type const & ) const = default;
 
 		[[nodiscard]] iterator_type begin( ) const {
 			return *this;
