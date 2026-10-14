@@ -9,6 +9,8 @@ project( daw-sqlite-helper
 
 add_subdirectory( extern )
 
+find_package( SQLite3 REQUIRED )
+
 include_directories( "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 add_library( ${PROJECT_NAME}
@@ -18,12 +20,13 @@ add_library( ${PROJECT_NAME}
 						 src/daw/sqlite/prepared_statement.cpp
 						 )
 target_link_libraries( ${PROJECT_NAME}
+											PUBLIC
 											 daw::daw-header-libraries
 											 daw::daw-utf-range
-											 sqlite3
+											 SQLite::SQLite3
 											 )
 add_library( daw::${PROJECT_NAME} ALIAS ${PROJECT_NAME} )
-target_compile_features( ${PROJECT_NAME} INTERFACE cxx_std_20 )
+target_compile_features( ${PROJECT_NAME} PUBLIC cxx_std_20 )
 
 if( ${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang" )
 	if( CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16 )
@@ -44,7 +47,6 @@ target_include_directories( ${PROJECT_NAME} INTERFACE
 														$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 														$<INSTALL_INTERFACE:include>
 														PRIVATE src )
-target_compile_features( ${PROJECT_NAME} INTERFACE cxx_std_20 )
 
 install( TARGETS ${PROJECT_NAME}
 				 EXPORT ${PROJECT_NAME}_Targets
