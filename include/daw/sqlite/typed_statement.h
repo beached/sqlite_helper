@@ -122,6 +122,17 @@ namespace daw::sqlite {
 			}( std::index_sequence_for<Columns...>{ } );
 		}
 
+		template<typename T>
+		requires( std::is_constructible_v<T, Columns...> )
+		[[nodiscard]] T row_as( ) const {
+			auto *stmt = get( );
+			return [&]<std::size_t... Is>(
+			         std::index_sequence<Is...> ) -> decltype( auto ) {
+				return T(
+				  ps_impl::read_column<Columns>( stmt, static_cast<int>( Is ) )... );
+			}( std::index_sequence_for<Columns...>{ } );
+		}
+
 		[[nodiscard]] decltype( auto )
 		visit( daw::invocable<Columns...> auto &&func ) const {
 			auto *stmt = get( );

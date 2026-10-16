@@ -20,6 +20,19 @@
 template<typename Statement, typename Func>
 concept can_visit = requires( Statement const &s, Func f ) { s.visit( f ); };
 
+template<typename Statement, typename T>
+concept can_row_as = requires( Statement const &s ) { s.template row_as<T>( ); };
+
+struct typed_result {
+	std::optional<std::int64_t> id;
+	std::string text;
+	std::optional<double> real;
+};
+
+struct wrong_typed_result {
+	wrong_typed_result( std::int64_t, std::string );
+};
+
 int main( ) {
 	// auto db = database( "db.sqlite" );
 	auto db = daw::sqlite::database( ":memory:" );
@@ -289,6 +302,24 @@ int main( ) {
 		} catch( daw::sqlite::sqlite3_exception const & ) { threw = true; }
 		assert( threw );
 		daw::println( "typed_statement ok" );
+	}
+	{
+		// typed_statement::row_as constructs a domain type from the current row
+		auto stmt = daw::sqlite::typed_statement<
+		  std::optional<std::int64_t>, std::string, std::optional<double>>(
+		  db, "SELECT i, t, r FROM vals ORDER BY rowid;" );
+		static_assert( can_row_as<decltype( stmt ), typed_result> );
+		static_assert( not can_row_as<decltype( stmt ), wrong_typed_result> );
+
+		assert( stmt.step( ) );
+		auto const first = stmt.row_as<typed_result>( );
+		assert( first.id and *first.id == 42 and first.text == "hello" and
+		        first.real and *first.real == 1.5 );
+		assert( stmt.step( ) );
+		auto const second = stmt.row_as<typed_result>( );
+		assert( not second.id and second.text.empty( ) and not second.real );
+		assert( not stmt.step( ) );
+		daw::println( "row_as ok" );
 	}
 	{
 		// typed_statement::visit calls func with the current row's columns

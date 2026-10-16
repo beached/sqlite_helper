@@ -13,4 +13,4 @@ add_executable( sqlite_helper_test
 								)
 target_link_libraries( sqlite_helper_test PRIVATE ${PROJECT_NAME} daw::daw-sqlite-helper )
 add_dependencies( full sqlite_helper_test )
-
+add_test( NAME sqlite_helper_test COMMAND sqlite_helper_test )
