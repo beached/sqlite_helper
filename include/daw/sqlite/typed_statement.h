@@ -255,7 +255,7 @@ namespace daw::sqlite {
 				}
 			}
 
-			[[nodiscard]] iterator begin( ) {
+			[[nodiscard]] iterator begin( ) const {
 				return iterator( *m_statement );
 			}
 
