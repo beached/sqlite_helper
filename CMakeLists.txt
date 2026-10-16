@@ -6,6 +6,10 @@ project( daw-sqlite-helper
 				 LANGUAGES C CXX
 				 )
 
+option( DAW_USE_SYSTEM_SQLITE3 "Use the system Sqlite3 install" OFF )
+if( DAW_USE_SYSTEM_SQLITE3 )
+find_package(SQLite3 REQUIRED)
+endif( )
 
 add_subdirectory( extern )
 

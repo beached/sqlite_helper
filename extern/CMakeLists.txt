@@ -25,4 +25,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(daw_utf_range)
 
+if( NOT DAW_USE_SYSTEM_SQLITE3 )
 add_subdirectory( Sqlite3 )
+endif( )
