@@ -33,7 +33,12 @@ namespace daw::sqlite {
 	} // namespace types
 
 	sqlite3_exception::sqlite3_exception( int err_no )
-	  : m_message( sqlite3_errstr( err_no ) ) {}
+	  : m_error( err_no )
+	  , m_message( sqlite3_errstr( err_no ) ) {}
+
+	sqlite3_exception::sqlite3_exception( int err_no, std::string message )
+	  : m_error( err_no )
+	  , m_message( std::move( message ) ) {}
 
 	char const *sqlite3_exception::what( ) const noexcept {
 		return m_message.c_str( );
@@ -46,13 +51,20 @@ namespace daw::sqlite {
 	sqlite3_exception::sqlite3_exception( std::string message )
 	  : m_message( std::move( message ) ) {}
 
-	void database::open( std::filesystem::path filename ) {
+	void database::open( std::filesystem::path const &filename, int flags ) {
+		// sqlite expects UTF-8 filenames on every platform
+		auto const fname = filename.u8string( );
 		sqlite3 *ptr = nullptr;
-		auto result = sqlite3_open( filename.c_str( ), &ptr );
-		if( result ) {
-			throw sqlite3_exception( "Could not open database " +
-			                         static_cast<std::string>( filename ) + ": " +
-			                         sqlite3_errmsg( ptr ) );
+		auto rc = sqlite3_open_v2( reinterpret_cast<char const *>( fname.c_str( ) ),
+		                           &ptr,
+		                           flags,
+		                           nullptr );
+		if( rc != SQLITE_OK ) {
+			// A handle is usually allocated even on failure and must be closed
+			auto message = "Could not open database " + filename.string( ) + ": " +
+			               ( ptr ? sqlite3_errmsg( ptr ) : sqlite3_errstr( rc ) );
+			sqlite3_close_v2( ptr );
+			throw sqlite3_exception( rc, std::move( message ) );
 		}
 		m_db.reset( ptr );
 		m_is_open = true;
@@ -112,8 +124,8 @@ namespace daw::sqlite {
 		return query_iterator( std::move( statement ) );
 	}
 
-	database::database( std::filesystem::path filename ) {
-		open( filename );
+	database::database( std::filesystem::path const &filename, int flags ) {
+		open( filename, flags );
 	}
 
 	sqlite3 *database::release( ) {
@@ -128,59 +140,23 @@ namespace daw::sqlite {
 	}
 
 	namespace {
-		void delete_text_or_blob( void *val ) {
-			auto ptr = static_cast<char const *>( val );
-			delete[] ptr;
-		}
-	} // namespace
-
-	namespace {
-		template<PreparedStatement T>
-		cell_value::value_t get_column( T &statement, size_t column ) {
-			switch( statement.get_column_type( column ) ) {
-			case column_type::Float:
-				return cell_value::value_t( std::in_place_type<types::real_t>,
-				                            statement.get_column_float( column ) );
-			case column_type::Integer:
-				return cell_value::value_t( std::in_place_type<types::integer_t>,
-				                            statement.get_column_integer( column ) );
-			case column_type::Text:
-				return cell_value::value_t( std::in_place_type<types::text_t>,
-				                            statement.get_column_text( column ) );
-			case column_type::Blob:
-				return cell_value::value_t( std::in_place_type<types::blob_t>,
-				                            statement.get_column_blob( column ) );
-			case column_type::Null:
-				return cell_value::value_t( std::in_place_type<cell_value::null_cell_t>,
-				                            cell_value::null_cell_t{ } );
-			default:
-				std::cerr << "Unknown sqlite3 column type returned" << std::endl;
-				std::terminate( );
-			}
-		}
+		constexpr auto to_cell_value = []( auto value ) {
+			return cell_value( value );
+		};
 	} // namespace
 
 	cell_value::cell_value( prepared_statement &statement, size_t column )
-	  : m_value{ get_column( statement, column ) } {}
+	  : cell_value( statement.visit_column( column, to_cell_value ) ) {}
 
 	cell_value::cell_value( shared_prepared_statement &statement, size_t column )
-	  : m_value{ get_column( statement, column ) } {}
+	  : cell_value( statement.visit_column( column, to_cell_value ) ) {}
 
 	std::string to_string( cell_value const &value ) {
-		switch( value.get_type( ) ) {
-		case column_type::Float:
-			return std::to_string( value.get_float( ) );
-		case column_type::Integer:
-			return std::to_string( value.get_integer( ) );
-		case column_type::Text:
-			return static_cast<std::string>( value.get_text( ) );
-		case column_type::Blob:
-			return types::to_string( value.get_blob( ) );
-		case column_type::Null:
-			return "{Null}";
-		default:
-			std::cerr << "Unknown sqlite3 column type returned" << std::endl;
-			std::terminate( );
-		}
+		return value.visit(
+		  []( types::real_t v ) { return std::to_string( v ); },
+		  []( types::integer_t v ) { return std::to_string( v ); },
+		  []( types::text_t v ) { return static_cast<std::string>( v ); },
+		  []( types::blob_t const &v ) { return types::to_string( v ); },
+		  []( cell_value::null_cell_t ) { return std::string( "{Null}" ); } );
 	}
 } // namespace daw::sqlite

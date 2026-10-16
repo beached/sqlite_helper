@@ -11,6 +11,7 @@
 #include "daw/sqlite/cell_value.h"
 #include "daw/sqlite/prepared_statement.h"
 #include "daw/sqlite/query_iterator.h"
+#include "daw/sqlite/typed_statement.h"
 
 #include <daw/daw_string_view.h>
 #include <daw/daw_take.h>
@@ -26,7 +27,7 @@ namespace daw::sqlite {
 		struct sqlite_deleter {
 			DAW_CPP23_STATIC_CALL_OP void operator( )(
 				sqlite3 *ptr ) DAW_CPP23_STATIC_CALL_OP_CONST noexcept {
-				sqlite3_close( ptr );
+				sqlite3_close_v2( ptr );
 			}
 		};
 	} // namespace sqlite_impl
@@ -38,18 +39,24 @@ namespace daw::sqlite {
 	public:
 		explicit database( ) = default;
 
+		static constexpr int default_open_flags =
+		  SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
+
 		/***
-		 * @brief Open an existing or creat a new sqlite database at the path
+		 * @brief Open an existing or create a new sqlite database at the path
 		 * specified
+		 * @param flags SQLITE_OPEN_* flags passed to sqlite3_open_v2
 		 */
-		explicit database( std::filesystem::path filename );
+		explicit database( std::filesystem::path const &filename,
+		                   int flags = default_open_flags );
 
 		/***
 		 * @brief Give ownership of an existing sqlite db
 		 */
 		explicit database( sqlite3 *db );
 
-		void open( std::filesystem::path filename );
+		void open( std::filesystem::path const &filename,
+		           int flags = default_open_flags );
 		void close( );
 		[[nodiscard]] sqlite3 const *get_handle( ) const;
 		[[nodiscard]] sqlite3 *get_handle( );
@@ -67,6 +74,15 @@ namespace daw::sqlite {
 			assert( m_db );
 			return exec(
 				shared_prepared_statement( *this, sql, DAW_FWD( params )... ) );
+		}
+
+		template<typename... Params>
+			requires( Parameters<Params...> ) //
+		query_iterator exec( daw::string_view sql, prepare_flags flags,
+		                     Params &&...params ) {
+			assert( m_db );
+			return exec(
+				shared_prepared_statement( *this, sql, flags, DAW_FWD( params )... ) );
 		}
 	}; // class database
 }    // namespace daw::sqlite

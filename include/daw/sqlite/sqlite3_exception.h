@@ -18,6 +18,7 @@ namespace daw::sqlite {
 
 	public:
 		explicit sqlite3_exception( int err_no );
+		sqlite3_exception( int err_no, std::string message );
 		explicit sqlite3_exception( std::string message );
 
 		[[nodiscard]] char const *what( ) const noexcept override;

@@ -25,3 +25,4 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(daw_utf_range)
 
+add_subdirectory( Sqlite3 )

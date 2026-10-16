@@ -12,11 +12,13 @@
 
 #include <daw/daw_contiguous_view.h>
 #include <daw/daw_string_view.h>
+#include <daw/daw_visit.h>
 
 #include <cstdint>
 #include <iostream>
 #include <string>
 #include <utility>
+#include <variant>
 
 namespace daw::sqlite {
 	enum class column_type { Float, Integer, Text, Blob, Null };
@@ -66,6 +68,8 @@ namespace daw::sqlite {
 
 		explicit DAW_CONSTEVAL cell_value( std::nullptr_t ) {}
 
+		explicit constexpr cell_value( null_cell_t ) {}
+
 		[[nodiscard]] constexpr types::real_t const &get_float( ) const {
 			auto *ptr = std::get_if<types::real_t>( &m_value );
 			if(not ptr) {
@@ -111,26 +115,42 @@ namespace daw::sqlite {
 		}
 
 		[[nodiscard]] constexpr column_type get_type( ) const {
-			// 	enum class column_type { Float, Integer, Text, Blob, Null };
-			// std::variant<types::real_t, types::integer_t, types::text_t,
-			// types::blob_t, std::nullptr_t>;
-			switch(m_value.index( )) {
-			case 0:
-				return column_type::Float;
-			case 1:
-				return column_type::Integer;
-			case 2:
-				return column_type::Text;
-			case 3:
-				return column_type::Blob;
-			case 4:
-				return column_type::Null;
-			default:
-				std::cerr << "Unexpected column type stored.\n";
-				std::terminate( );
-			}
+			// column_type enumerators are in the same order as the alternatives
+			return static_cast<column_type>( m_value.index( ) );
+		}
+
+		/***
+		 * @brief Visit the stored value with an overload set of visitors.  The
+		 * alternatives are trivial so the variant is never valueless
+		 */
+		template<typename... Visitors>
+		constexpr decltype( auto ) visit( Visitors &&...visitors ) const {
+			return daw::visit_nt( m_value, DAW_FWD( visitors )... );
 		}
 	}; // class cell_value
+
+	static_assert(
+	  std::same_as<std::variant_alternative_t<static_cast<std::size_t>(
+	                                            column_type::Float ),
+	                                          cell_value::value_t>,
+	               types::real_t> and
+	  std::same_as<std::variant_alternative_t<static_cast<std::size_t>(
+	                                            column_type::Integer ),
+	                                          cell_value::value_t>,
+	               types::integer_t> and
+	  std::same_as<std::variant_alternative_t<static_cast<std::size_t>(
+	                                            column_type::Text ),
+	                                          cell_value::value_t>,
+	               types::text_t> and
+	  std::same_as<std::variant_alternative_t<static_cast<std::size_t>(
+	                                            column_type::Blob ),
+	                                          cell_value::value_t>,
+	               types::blob_t> and
+	  std::same_as<std::variant_alternative_t<static_cast<std::size_t>(
+	                                            column_type::Null ),
+	                                          cell_value::value_t>,
+	               cell_value::null_cell_t>,
+	  "column_type must match the order of cell_value::value_t" );
 
 	[[nodiscard]] std::string to_string( cell_value const &value );
 

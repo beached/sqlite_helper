@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 4.2.0 )
 project( daw-sqlite-helper
-				 VERSION "0.3.0"
+				 VERSION "0.4.0"
 				 DESCRIPTION "C++ bindings for sqlite3"
 				 HOMEPAGE_URL "https://github.com/beached/sqlite_helper"
 				 LANGUAGES C CXX
@@ -8,8 +8,6 @@ project( daw-sqlite-helper
 
 
 add_subdirectory( extern )
-
-find_package( SQLite3 REQUIRED )
 
 include_directories( "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
@@ -20,7 +18,7 @@ add_library( ${PROJECT_NAME}
 						 src/daw/sqlite/prepared_statement.cpp
 						 )
 target_link_libraries( ${PROJECT_NAME}
-											PUBLIC
+											 PUBLIC
 											 daw::daw-header-libraries
 											 daw::daw-utf-range
 											 SQLite::SQLite3
@@ -28,12 +26,24 @@ target_link_libraries( ${PROJECT_NAME}
 add_library( daw::${PROJECT_NAME} ALIAS ${PROJECT_NAME} )
 target_compile_features( ${PROJECT_NAME} PUBLIC cxx_std_20 )
 
-if( ${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang" )
-	if( CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16 )
-		target_compile_options(
-				${PROJECT_NAME} PRIVATE
-				-Wno-c++23-extensions
-				)
+# Clang defines several feature macros for previous C++ standards then warns if you use them :(
+option( DAW_SQLITE3_SUPPRESS_CLANG_EXTENSION_WARNINGS
+		"Disable Clang's C++23 and C++26 extension warnings" ON )
+if( DAW_SQLITE3_SUPPRESS_CLANG_EXTENSION_WARNINGS )
+	if( ${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang" )
+		if( CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16 )
+			target_compile_options( ${PROJECT_NAME} PRIVATE
+					-Wno-c++23-extensions
+					-Wno-c++26-extensions
+					)
+		endif()
+	elseif( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
+		if( CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 17 )
+			target_compile_options( ${PROJECT_NAME} PRIVATE
+					-Wno-c++23-extensions
+					-Wno-c++26-extensions
+					)
+		endif()
 	endif()
 endif()
 
@@ -89,4 +99,3 @@ if( DAW_ENABLE_TESTING )
 	enable_testing()
 	add_subdirectory( tests )
 endif()
-

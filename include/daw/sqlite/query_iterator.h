@@ -62,6 +62,25 @@ namespace daw::sqlite {
 			return front( )[name];
 		}
 
+		/***
+		 * @brief Read the first sizeof...( Ts ) columns of the current row without
+		 * materializing a result_row_t.  See ps_impl::read_column for the
+		 * supported types
+		 */
+		template<typename... Ts>
+		[[nodiscard]] std::tuple<Ts...> get_row( ) const {
+			return m_statement.template get_row<Ts...>( );
+		}
+
+		/***
+		 * @brief Call vis( column_index, value ) for each column of the current
+		 * row without materializing a result_row_t
+		 */
+		template<typename Visitor>
+		void visit_row( Visitor &&vis ) const {
+			m_statement.visit_row( DAW_FWD( vis ) );
+		}
+
 		[[nodiscard]] const_pointer operator->( ) const {
 			return &( operator*( ) );
 		}

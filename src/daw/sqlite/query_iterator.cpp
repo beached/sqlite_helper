@@ -16,15 +16,21 @@
 namespace daw::sqlite {
 	query_iterator::const_reference query_iterator::front( ) const {
 		if( not m_last_value ) {
+			if( not m_statement.is_good( ) ) {
+				throw sqlite3_exception( "Attempt to use an invalid statement" );
+			}
+			// Validated once for the row, so the columns can be read unchecked
+			auto *stmt = m_statement.get( );
 			auto const column_count = m_statement.get_column_count( );
 			m_last_value = result_row_t(
 			  daw::do_resize_and_overwrite,
 			  column_count,
 			  [&]( auto *ptr, std::size_t sz ) {
-				  for( size_t column = 0; column != column_count; ++column ) {
+				  for( int column = 0; column != static_cast<int>( column_count );
+				       ++column ) {
 					  std::construct_at( ptr + column,
-					                     m_statement.get_column_name( column ),
-					                     cell_value( m_statement, column ) );
+					                     ps_impl::column_name( stmt, column ),
+					                     ps_impl::read_column<cell_value>( stmt, column ) );
 				  }
 				  return sz;
 			  } );

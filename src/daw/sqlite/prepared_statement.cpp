@@ -19,29 +19,81 @@
 #include <string>
 
 namespace daw::sqlite {
-	prepared_statement::prepared_statement( database &db, daw::string_view sql ) {
-		assert( sql.size( ) <= std::numeric_limits<int>::max( ) );
-		sqlite3_stmt *st = nullptr;
-		auto rc = sqlite3_prepare_v2( db.get_handle( ),
-		                              sql.data( ),
-		                              static_cast<int>(sql.size( )),
-		                              &st,
-		                              nullptr );
-		if(rc != SQLITE_OK) {
-			throw sqlite3_exception( rc );
+	static_assert( static_cast<unsigned>( prepare_flags::persistent ) ==
+	               SQLITE_PREPARE_PERSISTENT );
+	static_assert( static_cast<unsigned>( prepare_flags::normalize ) ==
+	               SQLITE_PREPARE_NORMALIZE );
+	static_assert( static_cast<unsigned>( prepare_flags::no_vtab ) ==
+	               SQLITE_PREPARE_NO_VTAB );
+#if defined( SQLITE_PREPARE_DONT_LOG )
+	static_assert( static_cast<unsigned>( prepare_flags::dont_log ) ==
+	               SQLITE_PREPARE_DONT_LOG );
+#endif
+
+	namespace {
+		sqlite3_stmt *prepare( database &db, daw::string_view sql,
+		                       prepare_flags flags ) {
+			assert( sql.size( ) <= std::numeric_limits<int>::max( ) );
+			sqlite3_stmt *st = nullptr;
+			auto rc = sqlite3_prepare_v3( db.get_handle( ),
+			                              sql.data( ),
+			                              static_cast<int>( sql.size( ) ),
+			                              static_cast<unsigned>( flags ),
+			                              &st,
+			                              nullptr );
+			if( rc != SQLITE_OK ) {
+				throw sqlite3_exception( rc, sqlite3_errmsg( db.get_handle( ) ) );
+			}
+			return st;
 		}
-		m_statement.reset( st );
-	}
 
-	sqlite3_stmt *prepared_statement::get( ) {
-		return m_statement.get( );
-	}
+		void bind_value( sqlite3_stmt *stmt, std::size_t index,
+		                 cell_value const &value ) {
+			assert( index <= std::numeric_limits<int>::max( ) );
+			auto const idx = static_cast<int>( index );
+			auto rc = value.visit(
+			  [&]( types::real_t v ) { return sqlite3_bind_double( stmt, idx, v ); },
+			  [&]( types::integer_t v ) { return sqlite3_bind_int64( stmt, idx, v ); },
+			  [&]( types::text_t v ) {
+				  // A null pointer would bind NULL instead of an empty string
+				  auto const *first = v.data( ) ? v.data( ) : "";
+				  return sqlite3_bind_text64( stmt,
+				                              idx,
+				                              first,
+				                              static_cast<sqlite3_uint64>( v.size( ) ),
+				                              SQLITE_TRANSIENT,
+				                              SQLITE_UTF8 );
+			  },
+			  [&]( types::blob_t const &v ) {
+				  if( v.empty( ) ) {
+					  // A null pointer would bind NULL instead of an empty blob
+					  return sqlite3_bind_zeroblob64( stmt, idx, 0 );
+				  }
+				  return sqlite3_bind_blob64( stmt,
+				                              idx,
+				                              v.data( ),
+				                              static_cast<sqlite3_uint64>( v.size( ) ),
+				                              SQLITE_TRANSIENT );
+			  },
+			  [&]( cell_value::null_cell_t ) { return sqlite3_bind_null( stmt, idx ); } );
+			if( rc != SQLITE_OK ) {
+				throw sqlite3_exception( rc );
+			}
+		}
 
-	std::size_t prepared_statement::get_column_count( ) {
-		auto const count = sqlite3_column_count( get( ) );
-		assert( 0 <= count );
-		return static_cast<size_t>(count);
-	}
+		void bind_null( sqlite3_stmt *stmt, std::size_t index ) {
+			assert( index <= std::numeric_limits<int>::max( ) );
+			auto rc = sqlite3_bind_null( stmt, static_cast<int>( index ) );
+			if( rc != SQLITE_OK ) {
+				throw sqlite3_exception( rc );
+			}
+		}
+	} // namespace
+
+	prepared_statement::prepared_statement( database &db, daw::string_view sql,
+	                                        prepare_flags flags )
+	  : m_statement( prepare( db, sql, flags ) ) {}
+
 
 	namespace {
 		inline void validate( prepared_statement &statement, std::size_t column ) {
@@ -109,66 +161,13 @@ namespace daw::sqlite {
 		m_statement.reset( );
 	}
 
-	namespace {
-		void delete_text_or_blob( void *val ) {
-			auto ptr = static_cast<char const *>(val);
-			delete[] ptr;
-		}
-	} // namespace
-
 	void prepared_statement::bind( std::size_t index, cell_value const &value ) {
-		assert( index <= std::numeric_limits<int>::max( ) );
-		auto rc = SQLITE_ERROR;
-		switch(value.get_type( )) {
-		case column_type::Float:
-			rc = sqlite3_bind_double(
-				m_statement.get( ),
-				static_cast<int>(index),
-				value.get_float( ) );
-			break;
-		case column_type::Integer:
-			rc = sqlite3_bind_int64(
-				m_statement.get( ),
-				static_cast<int>(index),
-				value.get_integer( ) );
-			break;
-		case column_type::Text: {
-			auto const &val = value.get_text( );
-			auto *arry = new char[val.size( )]; // deleted by sqlite3_bind_text
-			// 5th parameter function
-			std::copy( std::data( val ), daw::data_end( val ), arry );
-			rc = sqlite3_bind_text( m_statement.get( ),
-			                        static_cast<int>(index),
-			                        arry,
-			                        val.size( ),
-			                        delete_text_or_blob );
-		}
-		break;
-		case column_type::Blob: {
-			auto const &val = value.get_blob( );
-			auto *arry = new std::byte[val.size( )]; // deleted by sqlite3_bind_blob
-			// 5th parameter function
-			std::copy( val.begin( ), val.end( ), arry );
-			rc = sqlite3_bind_blob( m_statement.get( ),
-			                        static_cast<int>(index),
-			                        arry,
-			                        val.size( ),
-			                        delete_text_or_blob );
-		}
-		break;
-		case column_type::Null:
-			rc = sqlite3_bind_null( m_statement.get( ), static_cast<int>(index) );
-			break;
-		default:
-			std::cerr << "Unknown sqlite3 column type returned" << std::endl;
-			std::terminate( );
-		}
-		if(rc != SQLITE_OK) {
-			throw sqlite3_exception( rc );
-		}
+		bind_value( m_statement.get( ), index, value );
 	}
 
-	void prepared_statement::bind( std::size_t index ) {}
+	void prepared_statement::bind( std::size_t index ) {
+		bind_null( m_statement.get( ), index );
+	}
 
 	column_type prepared_statement::get_column_type( std::size_t column ) {
 		validate( *this, column );
@@ -192,19 +191,10 @@ namespace daw::sqlite {
 	}
 
 	shared_prepared_statement::shared_prepared_statement( database &db,
-		daw::string_view sql ) {
-		assert( sql.size( ) <= std::numeric_limits<int>::max( ) );
-		sqlite3_stmt *st = nullptr;
-		auto rc = sqlite3_prepare_v2( db.get_handle( ),
-		                              sql.data( ),
-		                              static_cast<int>(sql.size( )),
-		                              &st,
-		                              nullptr );
-		if(rc != SQLITE_OK) {
-			throw sqlite3_exception( rc );
-		}
-		m_statement.reset( st, ps_impl::sqlite3_stmt_deleter{} );
-	}
+	                                                      daw::string_view sql,
+	                                                      prepare_flags flags )
+	  : m_statement( prepare( db, sql, flags ),
+	                 ps_impl::sqlite3_stmt_deleter{ } ) {}
 
 	shared_prepared_statement::shared_prepared_statement(
 		prepared_statement statement )
@@ -291,60 +281,13 @@ namespace daw::sqlite {
 		m_statement.reset( );
 	}
 
-	void shared_prepared_statement::bind( std::size_t index,
-	                                      cell_value const &value ) {
-		assert( index <= std::numeric_limits<int>::max( ) );
-		auto rc = SQLITE_ERROR;
-		switch(value.get_type( )) {
-		case column_type::Float:
-			rc = sqlite3_bind_double(
-				m_statement.get( ),
-				static_cast<int>(index),
-				value.get_float( ) );
-			break;
-		case column_type::Integer:
-			rc = sqlite3_bind_int64(
-				m_statement.get( ),
-				static_cast<int>(index),
-				value.get_integer( ) );
-			break;
-		case column_type::Text: {
-			auto const &val = value.get_text( );
-			auto *arry = new char[val.size( )]; // deleted by sqlite3_bind_text
-			// 5th parameter function
-			std::copy( std::data( val ), daw::data_end( val ), arry );
-			rc = sqlite3_bind_text( m_statement.get( ),
-			                        static_cast<int>(index),
-			                        arry,
-			                        val.size( ),
-			                        delete_text_or_blob );
-		}
-		break;
-		case column_type::Blob: {
-			auto const &val = value.get_blob( );
-			auto *arry = new std::byte[val.size( )]; // deleted by sqlite3_bind_blob
-			// 5th parameter function
-			std::copy( val.begin( ), val.end( ), arry );
-			rc = sqlite3_bind_blob( m_statement.get( ),
-			                        static_cast<int>(index),
-			                        arry,
-			                        val.size( ),
-			                        delete_text_or_blob );
-		}
-		break;
-		case column_type::Null:
-			rc = sqlite3_bind_null( m_statement.get( ), static_cast<int>(index) );
-			break;
-		default:
-			std::cerr << "Unknown sqlite3 column type returned" << std::endl;
-			std::terminate( );
-		}
-		if(rc != SQLITE_OK) {
-			throw sqlite3_exception( rc );
-		}
+	void shared_prepared_statement::bind( std::size_t index, cell_value const &value ) {
+		bind_value( m_statement.get( ), index, value );
 	}
 
-	void shared_prepared_statement::bind( std::size_t index ) {}
+	void shared_prepared_statement::bind( std::size_t index ) {
+		bind_null( m_statement.get( ), index );
+	}
 
 	column_type shared_prepared_statement::get_column_type( std::size_t column ) {
 		validate( *this, column );
