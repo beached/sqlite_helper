@@ -7,13 +7,19 @@
 //
 
 #include <daw/sqlite/sqlite3_class.h>
+#include <daw/daw_ensure.h>
+#include <daw/daw_iterator_traits.h>
 #include <daw/daw_print.h>
+#include <daw/pipelines/map.h>
+#include <daw/pipelines/pipeline.h>
 
 #include <array>
 #include <cstddef>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 // requires-expressions only SFINAE inside a template
@@ -32,6 +38,27 @@ struct typed_result {
 struct wrong_typed_result {
 	wrong_typed_result( std::int64_t, std::string );
 };
+
+struct RowType {
+	int id;
+	std::string name;
+
+	friend bool operator==( RowType const &, RowType const & ) = default;
+};
+
+using iterator_contract_statement = daw::sqlite::typed_statement<int>;
+using row_iterator = iterator_contract_statement::row_iterator;
+using row_range = iterator_contract_statement::row_range;
+static_assert( std::input_iterator<row_iterator> );
+static_assert( not std::forward_iterator<row_iterator> );
+static_assert( daw::InputIterator<row_iterator> );
+static_assert( std::ranges::input_range<row_range> );
+
+using object_statement = daw::sqlite::typed_statement<int, std::string>;
+using object_range =
+  decltype( std::declval<object_statement &>( ).rows_as<RowType>( ) );
+static_assert( std::ranges::input_range<object_range> );
+static_assert( std::same_as<std::ranges::range_value_t<object_range>, RowType> );
 
 int main( ) {
 	// auto db = database( "db.sqlite" );
@@ -288,6 +315,37 @@ int main( ) {
 		}
 		assert( rows.size( ) == 1 and std::get<0>( rows[0] ).empty( ) and
 		        not std::get<1>( rows[0] ) );
+
+		// The iterator also meets daw::pipelines' iterator conventions.  Keep the
+		// reset-owning range alive while a pipeline view refers to it.
+		auto records = daw::sqlite::typed_statement<int, std::string>(
+		  db, "SELECT 1, 'one' UNION ALL SELECT 2, 'two' ORDER BY 1;" );
+		auto record_rows = records.rows( );
+		auto converted_rows = daw::pipelines::pipeline(
+		  record_rows, daw::pipelines::FromTuple<RowType> );
+		auto converted = std::vector<RowType>( );
+		for( auto row : converted_rows ) {
+			converted.push_back( std::move( row ) );
+		}
+		daw_ensure( ( converted ==
+		              std::vector<RowType>{ { 1, "one" }, { 2, "two" } } ) );
+
+		auto direct_records = daw::sqlite::typed_statement<int, std::string>(
+		  db, "SELECT 3, 'three' UNION ALL SELECT 4, 'four' ORDER BY 1;" );
+		auto direct = std::vector<RowType>( );
+		for( RowType row : direct_records.rows_as<RowType>( ) ) {
+			direct.push_back( std::move( row ) );
+		}
+		daw_ensure( ( direct ==
+		              std::vector<RowType>{ { 3, "three" }, { 4, "four" } } ) );
+
+		auto post_increment = daw::sqlite::typed_statement<int>(
+		  db, "SELECT 3 UNION ALL SELECT 4 ORDER BY 1;" );
+		auto post_increment_rows = post_increment.rows( );
+		auto row_it = post_increment_rows.begin( );
+		daw_ensure( *row_it++ == std::tuple{ 3 } );
+		daw_ensure( *row_it == std::tuple{ 4 } );
+		daw_ensure( ++row_it == post_increment_rows.end( ) );
 
 		// Manual stepping
 		auto one = daw::sqlite::typed_statement<int, bool>( db, "SELECT 7, 1;" );

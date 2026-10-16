@@ -14,6 +14,7 @@
 
 #include <daw/daw_concepts.h>
 #include <daw/daw_string_view.h>
+#include <daw/iterator/daw_arrow_proxy.h>
 
 #include <cstddef>
 #include <iterator>
@@ -143,70 +144,126 @@ namespace daw::sqlite {
 			}( std::index_sequence_for<Columns...>{ } );
 		}
 
-		class row_iterator {
+		template<typename T>
+		requires( std::is_constructible_v<T, Columns...> )
+		class basic_row_iterator {
 			typed_statement *m_statement = nullptr;
 			bool m_done = true;
 
 			friend class typed_statement;
 
-			explicit row_iterator( typed_statement &statement )
+			explicit basic_row_iterator( typed_statement &statement )
 			  : m_statement( &statement )
 			  , m_done( not statement.step( ) ) {}
 
 		public:
-			using value_type = row_type;
+			using value_type = T;
+			using reference = value_type;
+			using pointer = daw::arrow_proxy<value_type>;
 			using difference_type = std::ptrdiff_t;
 			using iterator_concept = std::input_iterator_tag;
+			using iterator_category = iterator_concept;
 
-			row_iterator( ) = default;
+			class post_increment_proxy {
+				value_type m_value;
+
+			public:
+				explicit post_increment_proxy( value_type value )
+				  : m_value( std::move( value ) ) {}
+
+				[[nodiscard]] value_type const &operator*( ) const & noexcept {
+					return m_value;
+				}
+
+				[[nodiscard]] value_type operator*( ) && {
+					return std::move( m_value );
+				}
+			};
+
+			basic_row_iterator( ) = default;
 
 			[[nodiscard]] value_type operator*( ) const {
-				return m_statement->row( );
+				return m_statement->template row_as<value_type>( );
 			}
 
-			row_iterator &operator++( ) {
+			[[nodiscard]] pointer operator->( ) const {
+				return pointer{ operator*( ) };
+			}
+
+			basic_row_iterator &operator++( ) {
 				m_done = not m_statement->step( );
 				return *this;
 			}
 
-			void operator++( int ) {
+			[[nodiscard]] post_increment_proxy operator++( int ) {
+				auto result = post_increment_proxy( operator*( ) );
 				operator++( );
+				return result;
 			}
 
-			[[nodiscard]] friend bool operator==( row_iterator const &it,
+			[[nodiscard]] friend bool operator==( basic_row_iterator const &lhs,
+			                                      basic_row_iterator const &rhs ) {
+				if( lhs.m_done or rhs.m_done ) {
+					return lhs.m_done == rhs.m_done;
+				}
+				return lhs.m_statement == rhs.m_statement;
+			}
+
+			[[nodiscard]] friend bool operator==( basic_row_iterator const &it,
 			                                      std::default_sentinel_t ) {
 				return it.m_done;
 			}
 		};
+		using row_iterator = basic_row_iterator<row_type>;
 
 		/***
 		 * @brief The rows of one execution.  Resets the statement on destruction,
 		 * releasing its read transaction and keeping its bindings
 		 */
-		class row_range {
+		template<typename T>
+		requires( std::is_constructible_v<T, Columns...> )
+		class basic_row_range {
 			typed_statement *m_statement;
 
 			friend class typed_statement;
 
-			explicit row_range( typed_statement &statement )
+			explicit basic_row_range( typed_statement &statement )
 			  : m_statement( &statement ) {}
 
 		public:
-			row_range( row_range const & ) = delete;
-			row_range &operator=( row_range const & ) = delete;
+			using iterator = basic_row_iterator<T>;
 
-			~row_range( ) {
-				sqlite3_reset( m_statement->get( ) );
+			basic_row_range( basic_row_range const & ) = delete;
+			basic_row_range &operator=( basic_row_range const & ) = delete;
+
+			basic_row_range( basic_row_range &&other ) noexcept
+			  : m_statement( std::exchange( other.m_statement, nullptr ) ) {}
+
+			basic_row_range &operator=( basic_row_range &&other ) noexcept {
+				if( this != &other ) {
+					if( m_statement ) {
+						sqlite3_reset( m_statement->get( ) );
+					}
+					m_statement = std::exchange( other.m_statement, nullptr );
+				}
+				return *this;
 			}
 
-			[[nodiscard]] row_iterator begin( ) {
-				return row_iterator( *m_statement );
+			~basic_row_range( ) {
+				if( m_statement ) {
+					sqlite3_reset( m_statement->get( ) );
+				}
 			}
 
-			[[nodiscard]] static std::default_sentinel_t end( ) {
+			[[nodiscard]] iterator begin( ) {
+				return iterator( *m_statement );
+			}
+
+			[[nodiscard]] static iterator end( ) {
 				return { };
 			}
 		};
+		using row_range = basic_row_range<row_type>;
 
 		/***
 		 * @brief Execute the statement and iterate its rows as row_type.  The
@@ -217,6 +274,19 @@ namespace daw::sqlite {
 			// step( ) already threw
 			sqlite3_reset( get( ) );
 			return row_range( *this );
+		}
+
+		/***
+		 * @brief Execute the statement and construct each row as T.  Resets the
+		 * statement before execution and when the returned range is destroyed
+		 */
+		template<typename T>
+		requires( std::is_constructible_v<T, Columns...> )
+		[[nodiscard]] basic_row_range<T> rows_as( ) {
+			// Not reset( ): sqlite3_reset returns the previous run's error, which
+			// step( ) already threw
+			sqlite3_reset( get( ) );
+			return basic_row_range<T>( *this );
 		}
 	};
 } // namespace daw::sqlite
