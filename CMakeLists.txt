@@ -8,7 +8,12 @@ project( daw-sqlite-helper
 
 option( DAW_USE_SYSTEM_SQLITE3 "Use the system Sqlite3 install" OFF )
 if( DAW_USE_SYSTEM_SQLITE3 )
-find_package(SQLite3 REQUIRED)
+	find_package( SQLite3 REQUIRED )
+	# These only apply when SQLite is built from the bundled amalgamation
+	if( DAW_SQLITE3_DEFINITIONS OR DAW_SQLITE3_COMPILE_OPTIONS )
+		message( WARNING "DAW_USE_SYSTEM_SQLITE3 is ON, so DAW_SQLITE3_DEFINITIONS and "
+		         "DAW_SQLITE3_COMPILE_OPTIONS are ignored" )
+	endif()
 endif( )
 
 add_subdirectory( extern )

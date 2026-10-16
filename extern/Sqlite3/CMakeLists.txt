@@ -22,6 +22,12 @@ set(DAW_SQLITE3_DEFINITIONS "" CACHE STRING
     "Compile definitions for the bundled SQLite amalgamation (a ; list)")
 target_compile_definitions(sqlite3 PUBLIC ${DAW_SQLITE3_DEFINITIONS})
 
+# Compiler flags for building the amalgamation only, e.g. "-march=native".
+# PRIVATE: they change how SQLite is compiled, not what its header declares
+set(DAW_SQLITE3_COMPILE_OPTIONS "" CACHE STRING
+    "Compile options for the bundled SQLite amalgamation (a ; list)")
+target_compile_options(sqlite3 PRIVATE ${DAW_SQLITE3_COMPILE_OPTIONS})
+
 target_include_directories(sqlite3 PUBLIC
     $<BUILD_INTERFACE:${sqlite3_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>

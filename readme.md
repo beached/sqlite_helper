@@ -31,6 +31,12 @@ or `-DDAW_SQLITE3_DEFINITIONS="..."` on the command line. The definitions are pu
 includes `sqlite3.h` sees the same declarations SQLite was built with. Most `SQLITE_OMIT_*` options are not supported
 with the amalgamation.
 
+Compiler flags for the amalgamation alone, such as `-march=native`, go in `DAW_SQLITE3_COMPILE_OPTIONS`, also a `;`
+list. They are private to the SQLite target.
+
+To link the system's SQLite instead, set `DAW_USE_SYSTEM_SQLITE3=ON`; it is found with `find_package( SQLite3 )`.
+`DAW_SQLITE3_DEFINITIONS` and `DAW_SQLITE3_COMPILE_OPTIONS` have no effect then, and setting either gives a warning.
+
 
 
 #### Opening a database
