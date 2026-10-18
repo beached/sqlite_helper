@@ -10,12 +10,11 @@
 #include "daw/sqlite/sqlite3_class.h"
 
 #include <daw/daw_contiguous_view.h>
+#include <daw/daw_print.h>
 #include <daw/daw_string_view.h>
 
 #include <cstddef>
-#include <iostream>
 #include <sqlite3.h>
-#include <sstream>
 #include <string>
 
 namespace daw::sqlite {
@@ -187,7 +186,7 @@ namespace daw::sqlite {
 		case SQLITE_NULL:
 			return column_type::Null;
 		default:
-			std::cerr << "Unknown sqlite3 column type returned" << std::endl;
+			daw::println( stderr, "Unknown sqlite3 column type returned" );
 			std::terminate( );
 		}
 	}
@@ -306,7 +305,7 @@ namespace daw::sqlite {
 		case SQLITE_NULL:
 			return column_type::Null;
 		default:
-			std::cerr << "Unknown sqlite3 column type returned" << std::endl;
+			daw::println( stderr, "Unknown sqlite3 column type returned" );
 			std::terminate( );
 		}
 	}

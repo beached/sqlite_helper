@@ -10,27 +10,28 @@
 #include "daw/sqlite/prepared_statement.h"
 #include "daw/sqlite/query_iterator.h"
 
+#include <daw/daw_as.h>
 #include <daw/daw_contiguous_view.h>
+#include <daw/daw_formatters.h>
 #include <daw/daw_move.h>
 #include <daw/daw_out_ptr.h>
+#include <daw/daw_pipelines.h>
 #include <daw/daw_string_view.h>
 
 #include <cstddef>
 #include <format>
-#include <iostream>
 #include <sqlite3.h>
-#include <sstream>
 #include <string>
 #include <utility>
 
 namespace daw::sqlite {
 	namespace types {
 		std::string to_string( blob_t const &blob ) {
-			std::ostringstream ss;
-			for( auto const &current_byte : blob ) {
-				ss << std::hex << static_cast<unsigned char>( current_byte );
-			}
-			return ss.str( );
+			using namespace daw::pipelines;
+			constexpr auto p = pipeline( Map( []( std::byte b ) {
+				return as<unsigned char>( b );
+			} ) );
+			return std::format( "{:02x}", daw::fmt_range( p( blob ), "", "", "" ) );
 		}
 	} // namespace types
 

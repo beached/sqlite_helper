@@ -5,6 +5,28 @@ set( CMAKE_CXX_EXTENSIONS OFF )
 
 set( Boost_NO_WARN_NEW_VERSIONS ON )
 
+include( CheckCXXCompilerFlag )
+
+check_cxx_compiler_flag(
+		"-Wc++23-extensions"
+		HAS_WNO_CXX23_EXTENSIONS
+		)
+
+if( HAS_WNO_CXX23_EXTENSIONS )
+	add_compile_options(
+			"-Wno-c++23-extensions"
+			)
+endif()
+check_cxx_compiler_flag(
+		"-Wc++2c-extensions"
+		HAS_WNO_CXX26_EXTENSIONS
+		)
+
+if( HAS_WNO_CXX26_EXTENSIONS )
+	add_compile_options(
+			"-Wno-c++2c-extensions"
+			)
+endif()
 add_custom_target( full )
 
 

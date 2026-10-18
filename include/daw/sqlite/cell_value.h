@@ -15,7 +15,6 @@
 #include <daw/daw_visit.h>
 
 #include <cstdint>
-#include <iostream>
 #include <string>
 #include <utility>
 #include <variant>
@@ -41,7 +40,7 @@ namespace daw::sqlite {
 		                             types::blob_t, null_cell_t>;
 
 	private:
-		value_t m_value = null_cell_t{};
+		value_t m_value = null_cell_t{ };
 
 	public:
 		explicit cell_value( ) = default;
@@ -49,22 +48,21 @@ namespace daw::sqlite {
 		explicit cell_value( prepared_statement &statement, size_t column );
 		explicit cell_value( shared_prepared_statement &statement, size_t column );
 
-
 		template<std::same_as<bool> Bool>
 		explicit constexpr cell_value( Bool value )
-			: m_value{std::in_place_type<types::integer_t>, value} {}
+		  : m_value{ std::in_place_type<types::integer_t>, value } {}
 
 		explicit constexpr cell_value( types::real_t value )
-			: m_value{std::in_place_type<types::real_t>, value} {}
+		  : m_value{ std::in_place_type<types::real_t>, value } {}
 
 		explicit constexpr cell_value( types::integer_t value )
-			: m_value{std::in_place_type<types::integer_t>, value} {}
+		  : m_value{ std::in_place_type<types::integer_t>, value } {}
 
 		explicit constexpr cell_value( types::text_t value )
-			: m_value{std::in_place_type<types::text_t>, value} {}
+		  : m_value{ std::in_place_type<types::text_t>, value } {}
 
 		explicit constexpr cell_value( types::blob_t value )
-			: m_value{std::in_place_type<types::blob_t>, value} {}
+		  : m_value{ std::in_place_type<types::blob_t>, value } {}
 
 		explicit DAW_CONSTEVAL cell_value( std::nullptr_t ) {}
 
@@ -72,7 +70,7 @@ namespace daw::sqlite {
 
 		[[nodiscard]] constexpr types::real_t const &get_float( ) const {
 			auto *ptr = std::get_if<types::real_t>( &m_value );
-			if(not ptr) {
+			if( not ptr ) {
 				throw sqlite3_exception( "Cell Value is not of type Real" );
 			}
 			return *ptr;
@@ -80,15 +78,15 @@ namespace daw::sqlite {
 
 		[[nodiscard]] constexpr bool get_bool( ) const {
 			auto *ptr = std::get_if<types::integer_t>( &m_value );
-			if(not ptr) {
+			if( not ptr ) {
 				throw sqlite3_exception( "Cell Value is not of type Integer" );
 			}
-			return static_cast<bool>(*ptr);
+			return static_cast<bool>( *ptr );
 		}
 
 		[[nodiscard]] constexpr types::integer_t const &get_integer( ) const {
 			auto *ptr = std::get_if<types::integer_t>( &m_value );
-			if(not ptr) {
+			if( not ptr ) {
 				throw sqlite3_exception( "Cell Value is not of type Integer" );
 			}
 			return *ptr;
@@ -96,7 +94,7 @@ namespace daw::sqlite {
 
 		[[nodiscard]] constexpr types::text_t const &get_text( ) const {
 			auto *ptr = std::get_if<types::text_t>( &m_value );
-			if(not ptr) {
+			if( not ptr ) {
 				throw sqlite3_exception( "Cell Value is not of type Text" );
 			}
 			return *ptr;
@@ -104,7 +102,7 @@ namespace daw::sqlite {
 
 		[[nodiscard]] constexpr types::blob_t const &get_blob( ) const {
 			auto *ptr = std::get_if<types::blob_t>( &m_value );
-			if(not ptr) {
+			if( not ptr ) {
 				throw sqlite3_exception( "Cell Value is not of type Blob" );
 			}
 			return *ptr;
@@ -130,26 +128,26 @@ namespace daw::sqlite {
 	}; // class cell_value
 
 	static_assert(
-	  std::same_as<std::variant_alternative_t<static_cast<std::size_t>(
-	                                            column_type::Float ),
-	                                          cell_value::value_t>,
-	               types::real_t> and
-	  std::same_as<std::variant_alternative_t<static_cast<std::size_t>(
-	                                            column_type::Integer ),
-	                                          cell_value::value_t>,
-	               types::integer_t> and
-	  std::same_as<std::variant_alternative_t<static_cast<std::size_t>(
-	                                            column_type::Text ),
-	                                          cell_value::value_t>,
-	               types::text_t> and
-	  std::same_as<std::variant_alternative_t<static_cast<std::size_t>(
-	                                            column_type::Blob ),
-	                                          cell_value::value_t>,
-	               types::blob_t> and
-	  std::same_as<std::variant_alternative_t<static_cast<std::size_t>(
-	                                            column_type::Null ),
-	                                          cell_value::value_t>,
-	               cell_value::null_cell_t>,
+	  std::same_as<
+	    std::variant_alternative_t<static_cast<std::size_t>( column_type::Float ),
+	                               cell_value::value_t>,
+	    types::real_t> and
+	    std::same_as<std::variant_alternative_t<
+	                   static_cast<std::size_t>( column_type::Integer ),
+	                   cell_value::value_t>,
+	                 types::integer_t> and
+	    std::same_as<
+	      std::variant_alternative_t<
+	        static_cast<std::size_t>( column_type::Text ), cell_value::value_t>,
+	      types::text_t> and
+	    std::same_as<
+	      std::variant_alternative_t<
+	        static_cast<std::size_t>( column_type::Blob ), cell_value::value_t>,
+	      types::blob_t> and
+	    std::same_as<
+	      std::variant_alternative_t<
+	        static_cast<std::size_t>( column_type::Null ), cell_value::value_t>,
+	      cell_value::null_cell_t>,
 	  "column_type must match the order of cell_value::value_t" );
 
 	[[nodiscard]] std::string to_string( cell_value const &value );
@@ -159,7 +157,7 @@ namespace daw::sqlite {
 		cell_value value;
 
 		result_cell_t( daw::string_view n, cell_value v )
-			: name( n )
-			  , value( v ) {}
+		  : name( n )
+		  , value( v ) {}
 	};
 } // namespace daw::sqlite

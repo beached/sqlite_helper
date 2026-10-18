@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <iostream>
 #include <string>
 
 namespace daw::cookbook_class1 {
