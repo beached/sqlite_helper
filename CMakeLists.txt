@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 4.2.0 )
 project( daw-sqlite-helper
-				 VERSION "0.4.0"
+				 VERSION "0.4.1"
 				 DESCRIPTION "C++ bindings for sqlite3"
 				 HOMEPAGE_URL "https://github.com/beached/sqlite_helper"
 				 LANGUAGES C CXX

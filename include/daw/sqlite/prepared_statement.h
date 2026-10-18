@@ -12,6 +12,7 @@
 #include "daw/sqlite/sqlite3_exception.h"
 
 #include <daw/daw_string_view.h>
+#include <daw/daw_unique_ptr.h>
 
 #include <cassert>
 #include <concepts>
@@ -33,13 +34,17 @@ namespace daw::sqlite {
 		struct sqlite3_stmt_deleter {
 			void operator( )( sqlite3_stmt *ptr ) const;
 		};
+	} // namespace ps_impl
+	using unique_stmt_ptr =
+	  daw::unique_ptr<sqlite3_stmt, ps_impl::sqlite3_stmt_deleter>;
 
+	namespace ps_impl {
 		// Unchecked column access.  Callers must have validated the statement and
 		// column index.  Text and blob views are valid until the next step/reset
 
 		[[nodiscard]] inline int to_column( std::size_t column ) {
-			assert( column <= static_cast<std::size_t>(
-			                    std::numeric_limits<int>::max( ) ) );
+			assert( column <=
+			        static_cast<std::size_t>( std::numeric_limits<int>::max( ) ) );
 			return static_cast<int>( column );
 		}
 
@@ -58,7 +63,8 @@ namespace daw::sqlite {
 			auto const *first =
 			  reinterpret_cast<char const *>( sqlite3_column_text( stmt, column ) );
 			return types::text_t(
-			  first, static_cast<std::size_t>( sqlite3_column_bytes( stmt, column ) ) );
+			  first,
+			  static_cast<std::size_t>( sqlite3_column_bytes( stmt, column ) ) );
 		}
 
 		[[nodiscard]] inline types::blob_t column_blob( sqlite3_stmt *stmt,
@@ -66,7 +72,8 @@ namespace daw::sqlite {
 			auto const *first =
 			  static_cast<std::byte const *>( sqlite3_column_blob( stmt, column ) );
 			return types::blob_t(
-			  first, static_cast<std::size_t>( sqlite3_column_bytes( stmt, column ) ) );
+			  first,
+			  static_cast<std::size_t>( sqlite3_column_bytes( stmt, column ) ) );
 		}
 
 		/***
@@ -221,8 +228,8 @@ namespace daw::sqlite {
 			std::invoke_result_t<Visitor, types::integer_t>
 			visit_column( std::size_t column, Visitor &&vis ) {
 				auto *stmt = checked_handle( column + 1 );
-				return ps_impl::visit_column( stmt, to_column( column ),
-				                              DAW_FWD( vis ) );
+				return ps_impl::visit_column(
+				  stmt, to_column( column ), DAW_FWD( vis ) );
 			}
 
 			/***
@@ -293,10 +300,8 @@ namespace daw::sqlite {
 	template<typename... Ts>
 	concept Parameters = ( constructible_from<cell_value, Ts> and ... );
 
-	class prepared_statement
-	  : public ps_impl::row_access<prepared_statement> {
-		std::unique_ptr<sqlite3_stmt, ps_impl::sqlite3_stmt_deleter> m_statement =
-		  nullptr;
+	class prepared_statement : public ps_impl::row_access<prepared_statement> {
+		unique_stmt_ptr m_statement = nullptr;
 
 	public:
 		using i_am_a_prepared_statement = void;

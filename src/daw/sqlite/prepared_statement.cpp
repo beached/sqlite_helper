@@ -52,8 +52,12 @@ namespace daw::sqlite {
 			assert( index <= std::numeric_limits<int>::max( ) );
 			auto const idx = static_cast<int>( index );
 			auto rc = value.visit(
-			  [&]( types::real_t v ) { return sqlite3_bind_double( stmt, idx, v ); },
-			  [&]( types::integer_t v ) { return sqlite3_bind_int64( stmt, idx, v ); },
+			  [&]( types::real_t v ) {
+				  return sqlite3_bind_double( stmt, idx, v );
+			  },
+			  [&]( types::integer_t v ) {
+				  return sqlite3_bind_int64( stmt, idx, v );
+			  },
 			  [&]( types::text_t v ) {
 				  // A null pointer would bind NULL instead of an empty string
 				  auto const *first = v.data( ) ? v.data( ) : "";
@@ -75,7 +79,9 @@ namespace daw::sqlite {
 				                              static_cast<sqlite3_uint64>( v.size( ) ),
 				                              SQLITE_TRANSIENT );
 			  },
-			  [&]( cell_value::null_cell_t ) { return sqlite3_bind_null( stmt, idx ); } );
+			  [&]( cell_value::null_cell_t ) {
+				  return sqlite3_bind_null( stmt, idx );
+			  } );
 			if( rc != SQLITE_OK ) {
 				throw sqlite3_exception( rc );
 			}
@@ -94,13 +100,12 @@ namespace daw::sqlite {
 	                                        prepare_flags flags )
 	  : m_statement( prepare( db, sql, flags ) ) {}
 
-
 	namespace {
 		inline void validate( prepared_statement &statement, std::size_t column ) {
-			if(not statement.is_good( )) {
+			if( not statement.is_good( ) ) {
 				throw sqlite3_exception( "Attempt to use an invalid statement" );
 			}
-			if(statement.get_column_count( ) <= column) {
+			if( statement.get_column_count( ) <= column ) {
 				throw sqlite3_exception( "Column specified is out of range" );
 			}
 		}
@@ -108,28 +113,26 @@ namespace daw::sqlite {
 
 	daw::string_view prepared_statement::get_column_name( std::size_t column ) {
 		validate( *this, column );
-		return {
-			sqlite3_column_name( get( ), static_cast<int>(column) )};
+		return { sqlite3_column_name( get( ), static_cast<int>( column ) ) };
 	}
 
 	types::real_t prepared_statement::get_column_float( std::size_t column ) {
 		validate( *this, column );
-		return sqlite3_column_double( get( ), static_cast<int>(column) );
+		return sqlite3_column_double( get( ), static_cast<int>( column ) );
 	}
 
 	types::integer_t
 	prepared_statement::get_column_integer( std::size_t column ) {
 		validate( *this, column );
-		return sqlite3_column_int64( get( ), static_cast<int>(column) );
+		return sqlite3_column_int64( get( ), static_cast<int>( column ) );
 	}
 
 	types::text_t prepared_statement::get_column_text( std::size_t column ) {
 		validate( *this, column );
 		auto first = reinterpret_cast<char const *>(
-			sqlite3_column_text( get( ), static_cast<int>(column) ));
+		  sqlite3_column_text( get( ), static_cast<int>( column ) ) );
 		return daw::string_view(
-			first,
-			sqlite3_column_bytes( get( ), static_cast<int>(column) ) );
+		  first, sqlite3_column_bytes( get( ), static_cast<int>( column ) ) );
 	}
 
 	bool prepared_statement::is_column_null( std::size_t column ) {
@@ -139,20 +142,19 @@ namespace daw::sqlite {
 	types::blob_t prepared_statement::get_column_blob( std::size_t column ) {
 		validate( *this, column );
 		auto first = reinterpret_cast<std::byte const *>(
-			sqlite3_column_blob( get( ), static_cast<int>(column) ));
+		  sqlite3_column_blob( get( ), static_cast<int>( column ) ) );
 		return types::blob_t( first,
-		                      static_cast<std::size_t>(sqlite3_column_bytes(
-			                      get( ),
-			                      static_cast<int>(column) )) );
+		                      static_cast<std::size_t>( sqlite3_column_bytes(
+		                        get( ), static_cast<int>( column ) ) ) );
 	}
 
 	bool prepared_statement::is_good( ) const {
-		return nullptr != m_statement;
+		return static_cast<bool>( m_statement );
 	}
 
 	void prepared_statement::reset( ) {
 		auto rc = sqlite3_reset( m_statement.get( ) );
-		if(rc != SQLITE_OK) {
+		if( rc != SQLITE_OK ) {
 			throw sqlite3_exception( rc );
 		}
 	}
@@ -173,7 +175,7 @@ namespace daw::sqlite {
 		validate( *this, column );
 
 		switch(
-			sqlite3_column_type( m_statement.get( ), static_cast<int>(column) )) {
+		  sqlite3_column_type( m_statement.get( ), static_cast<int>( column ) ) ) {
 		case SQLITE_INTEGER:
 			return column_type::Integer;
 		case SQLITE_FLOAT:
@@ -197,9 +199,9 @@ namespace daw::sqlite {
 	                 ps_impl::sqlite3_stmt_deleter{ } ) {}
 
 	shared_prepared_statement::shared_prepared_statement(
-		prepared_statement statement )
-		: m_statement( statement.m_statement.release( ),
-		               ps_impl::sqlite3_stmt_deleter{} ) {}
+	  prepared_statement statement )
+	  : m_statement( statement.m_statement.release( ),
+	                 ps_impl::sqlite3_stmt_deleter{ } ) {}
 
 	sqlite3_stmt *shared_prepared_statement::get( ) {
 		return m_statement.get( );
@@ -208,47 +210,46 @@ namespace daw::sqlite {
 	std::size_t shared_prepared_statement::get_column_count( ) {
 		auto const count = sqlite3_column_count( get( ) );
 		assert( 0 <= count );
-		return static_cast<size_t>(count);
+		return static_cast<size_t>( count );
 	}
 
 	namespace {
 		inline void validate( shared_prepared_statement &statement,
 		                      std::size_t column ) {
-			if(not statement.is_good( )) {
+			if( not statement.is_good( ) ) {
 				throw sqlite3_exception( "Attempt to use an invalid statement" );
-			} else if(statement.get_column_count( ) <= column) {
+			} else if( statement.get_column_count( ) <= column ) {
 				throw sqlite3_exception( "Column specified is out of range" );
 			}
 		}
 	} // namespace
 
-	daw::string_view shared_prepared_statement::get_column_name(
-		std::size_t column ) {
+	daw::string_view
+	shared_prepared_statement::get_column_name( std::size_t column ) {
 		validate( *this, column );
 		return daw::string_view(
-			sqlite3_column_name( get( ), static_cast<int>(column) ) );
+		  sqlite3_column_name( get( ), static_cast<int>( column ) ) );
 	}
 
-	types::real_t shared_prepared_statement::get_column_float(
-		std::size_t column ) {
+	types::real_t
+	shared_prepared_statement::get_column_float( std::size_t column ) {
 		validate( *this, column );
-		return sqlite3_column_double( get( ), static_cast<int>(column) );
+		return sqlite3_column_double( get( ), static_cast<int>( column ) );
 	}
 
 	types::integer_t
 	shared_prepared_statement::get_column_integer( std::size_t column ) {
 		validate( *this, column );
-		return sqlite3_column_int64( get( ), static_cast<int>(column) );
+		return sqlite3_column_int64( get( ), static_cast<int>( column ) );
 	}
 
 	types::text_t
 	shared_prepared_statement::get_column_text( std::size_t column ) {
 		validate( *this, column );
 		auto first = reinterpret_cast<char const *>(
-			sqlite3_column_text( get( ), static_cast<int>(column) ));
+		  sqlite3_column_text( get( ), static_cast<int>( column ) ) );
 		return daw::string_view(
-			first,
-			sqlite3_column_bytes( get( ), static_cast<int>(column) ) );
+		  first, sqlite3_column_bytes( get( ), static_cast<int>( column ) ) );
 	}
 
 	bool shared_prepared_statement::is_column_null( std::size_t column ) {
@@ -259,11 +260,10 @@ namespace daw::sqlite {
 	shared_prepared_statement::get_column_blob( std::size_t column ) {
 		validate( *this, column );
 		auto first = reinterpret_cast<std::byte const *>(
-			sqlite3_column_blob( get( ), static_cast<int>(column) ));
+		  sqlite3_column_blob( get( ), static_cast<int>( column ) ) );
 		return types::blob_t( first,
-		                      static_cast<std::size_t>(sqlite3_column_bytes(
-			                      get( ),
-			                      static_cast<int>(column) )) );
+		                      static_cast<std::size_t>( sqlite3_column_bytes(
+		                        get( ), static_cast<int>( column ) ) ) );
 	}
 
 	bool shared_prepared_statement::is_good( ) const {
@@ -272,7 +272,7 @@ namespace daw::sqlite {
 
 	void shared_prepared_statement::reset( ) {
 		auto rc = sqlite3_reset( m_statement.get( ) );
-		if(rc != SQLITE_OK) {
+		if( rc != SQLITE_OK ) {
 			throw sqlite3_exception( rc );
 		}
 	}
@@ -281,7 +281,8 @@ namespace daw::sqlite {
 		m_statement.reset( );
 	}
 
-	void shared_prepared_statement::bind( std::size_t index, cell_value const &value ) {
+	void shared_prepared_statement::bind( std::size_t index,
+	                                      cell_value const &value ) {
 		bind_value( m_statement.get( ), index, value );
 	}
 
@@ -293,7 +294,7 @@ namespace daw::sqlite {
 		validate( *this, column );
 
 		switch(
-			sqlite3_column_type( m_statement.get( ), static_cast<int>(column) )) {
+		  sqlite3_column_type( m_statement.get( ), static_cast<int>( column ) ) ) {
 		case SQLITE_INTEGER:
 			return column_type::Integer;
 		case SQLITE_FLOAT:
@@ -311,7 +312,7 @@ namespace daw::sqlite {
 	}
 
 	void ps_impl::sqlite3_stmt_deleter::operator( )( sqlite3_stmt *ptr ) const {
-		if(ptr) {
+		if( ptr ) {
 			sqlite3_finalize( ptr );
 		}
 	}

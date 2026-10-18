@@ -23,18 +23,17 @@
 #include <sqlite3.h>
 
 namespace daw::sqlite {
-	namespace sqlite_impl {
-		struct sqlite_deleter {
-			DAW_CPP23_STATIC_CALL_OP void operator( )(
-				sqlite3 *ptr ) DAW_CPP23_STATIC_CALL_OP_CONST noexcept {
-				sqlite3_close_v2( ptr );
-			}
-		};
-	} // namespace sqlite_impl
+	struct sqlite_deleter {
+		DAW_CPP23_STATIC_CALL_OP void
+		operator( )( sqlite3 *ptr ) DAW_CPP23_STATIC_CALL_OP_CONST noexcept {
+			sqlite3_close_v2( ptr );
+		}
+	};
+	using unique_sqlite_ptr = std::unique_ptr<sqlite3, sqlite_deleter>;
 
 	class database {
-		std::unique_ptr<sqlite3, sqlite_impl::sqlite_deleter> m_db{};
-		daw::take_t<bool> m_is_open{};
+		unique_sqlite_ptr m_db{ };
+		daw::take_t<bool> m_is_open{ };
 
 	public:
 		explicit database( ) = default;
@@ -68,21 +67,20 @@ namespace daw::sqlite {
 		query_iterator exec( shared_prepared_statement statement );
 
 		template<typename... Params>
-			requires( Parameters<Params...> ) //
-		query_iterator exec( daw::string_view sql,
-		                     Params &&... params ) {
+		requires( Parameters<Params...> ) //
+		query_iterator exec( daw::string_view sql, Params &&...params ) {
 			assert( m_db );
 			return exec(
-				shared_prepared_statement( *this, sql, DAW_FWD( params )... ) );
+			  shared_prepared_statement( *this, sql, DAW_FWD( params )... ) );
 		}
 
 		template<typename... Params>
-			requires( Parameters<Params...> ) //
+		requires( Parameters<Params...> ) //
 		query_iterator exec( daw::string_view sql, prepare_flags flags,
 		                     Params &&...params ) {
 			assert( m_db );
 			return exec(
-				shared_prepared_statement( *this, sql, flags, DAW_FWD( params )... ) );
+			  shared_prepared_statement( *this, sql, flags, DAW_FWD( params )... ) );
 		}
 	}; // class database
-}    // namespace daw::sqlite
+} // namespace daw::sqlite

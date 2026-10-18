@@ -12,9 +12,11 @@
 
 #include <daw/daw_contiguous_view.h>
 #include <daw/daw_move.h>
+#include <daw/daw_out_ptr.h>
 #include <daw/daw_string_view.h>
 
 #include <cstddef>
+#include <format>
 #include <iostream>
 #include <sqlite3.h>
 #include <sstream>
@@ -54,19 +56,20 @@ namespace daw::sqlite {
 	void database::open( std::filesystem::path const &filename, int flags ) {
 		// sqlite expects UTF-8 filenames on every platform
 		auto const fname = filename.u8string( );
-		sqlite3 *ptr = nullptr;
+		auto ptr = unique_sqlite_ptr( );
 		auto rc = sqlite3_open_v2( reinterpret_cast<char const *>( fname.c_str( ) ),
-		                           &ptr,
+		                           daw::out_ptr( ptr ),
 		                           flags,
 		                           nullptr );
 		if( rc != SQLITE_OK ) {
 			// A handle is usually allocated even on failure and must be closed
-			auto message = "Could not open database " + filename.string( ) + ": " +
-			               ( ptr ? sqlite3_errmsg( ptr ) : sqlite3_errstr( rc ) );
-			sqlite3_close_v2( ptr );
+			auto message = std::format(
+			  "Could not open database {}: {}",
+			  filename.string( ),
+			  ( ptr ? sqlite3_errmsg( ptr.get( ) ) : sqlite3_errstr( rc ) ) );
 			throw sqlite3_exception( rc, std::move( message ) );
 		}
-		m_db.reset( ptr );
+		m_db = std::move( ptr );
 		m_is_open = true;
 	}
 
@@ -153,10 +156,20 @@ namespace daw::sqlite {
 
 	std::string to_string( cell_value const &value ) {
 		return value.visit(
-		  []( types::real_t v ) { return std::to_string( v ); },
-		  []( types::integer_t v ) { return std::to_string( v ); },
-		  []( types::text_t v ) { return static_cast<std::string>( v ); },
-		  []( types::blob_t const &v ) { return types::to_string( v ); },
-		  []( cell_value::null_cell_t ) { return std::string( "{Null}" ); } );
+		  []( types::real_t v ) {
+			  return std::to_string( v );
+		  },
+		  []( types::integer_t v ) {
+			  return std::to_string( v );
+		  },
+		  []( types::text_t v ) {
+			  return static_cast<std::string>( v );
+		  },
+		  []( types::blob_t const &v ) {
+			  return types::to_string( v );
+		  },
+		  []( cell_value::null_cell_t ) {
+			  return std::string( "{Null}" );
+		  } );
 	}
 } // namespace daw::sqlite

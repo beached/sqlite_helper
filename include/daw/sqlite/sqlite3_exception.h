@@ -8,7 +8,10 @@
 
 #pragma once
 
+#include <daw/daw_unique_ptr.h>
+
 #include <exception>
+#include <sqlite3.h>
 #include <string>
 
 namespace daw::sqlite {
@@ -24,4 +27,15 @@ namespace daw::sqlite {
 		[[nodiscard]] char const *what( ) const noexcept override;
 		[[nodiscard]] int error( ) const;
 	};
-}
+
+	namespace se_impl {
+		struct sqlite_char_ptr_deleter {
+			DAW_CPP23_STATIC_CALL_OP inline void
+			operator( )( char *p ) DAW_CPP23_STATIC_CALL_OP_CONST {
+				sqlite3_free( p );
+			}
+		};
+	} // namespace se_impl
+	using unique_sqlite_char_ptr =
+	  daw::unique_ptr<char, se_impl::sqlite_char_ptr_deleter>;
+} // namespace daw::sqlite
