@@ -86,7 +86,7 @@ int main( ) {
 		auto const d = std::distance( it, it.end( ) );
 		daw_ensure( d == 2 );
 
-		std::cout << "Table names 2\n";
+		daw::println( "Table names 2" );
 		for( auto const &row : db.exec( sql, "table" ) ) {
 			auto value = row["name"];
 			daw::println( "value.get_text( ): {}", value.get_text( ) );
