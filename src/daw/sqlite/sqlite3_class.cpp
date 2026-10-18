@@ -156,6 +156,11 @@ namespace daw::sqlite {
 			}
 	}
 
+	std::int64_t database::changes( ) {
+		assert( m_db );
+		return sqlite3_changes64( get_handle( ) );
+	}
+
 	database::database( std::filesystem::path const &filename, int flags ) {
 		open( filename, flags );
 	}

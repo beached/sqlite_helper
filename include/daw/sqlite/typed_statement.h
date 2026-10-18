@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <iterator>
+#include <optional>
 #include <sqlite3.h>
 #include <string>
 #include <tuple>
@@ -90,6 +91,19 @@ namespace daw::sqlite {
 		// bind a null to that value
 		void bind( std::size_t index ) {
 			m_statement.bind( index );
+		}
+
+		/***
+		 * @brief Bind text or a blob without copying it.  The data must stay
+		 * valid until the parameter is bound again or the statement is destroyed;
+		 * reset( ) keeps bindings, so it outlives one execution
+		 */
+		void bind_static( std::size_t index, types::text_t value ) {
+			m_statement.bind_static( index, value );
+		}
+
+		void bind_static( std::size_t index, types::blob_t value ) {
+			m_statement.bind_static( index, value );
 		}
 
 		void reset( ) {
@@ -224,6 +238,7 @@ namespace daw::sqlite {
 		requires( std::is_constructible_v<T, Columns...> )
 		class basic_row_range {
 			typed_statement *m_statement;
+			bool m_done = false;
 
 			friend class typed_statement;
 
@@ -237,7 +252,8 @@ namespace daw::sqlite {
 			basic_row_range &operator=( basic_row_range const & ) = delete;
 
 			basic_row_range( basic_row_range &&other ) noexcept
-			  : m_statement( std::exchange( other.m_statement, nullptr ) ) {}
+			  : m_statement( std::exchange( other.m_statement, nullptr ) )
+			  , m_done( other.m_done ) {}
 
 			basic_row_range &operator=( basic_row_range &&other ) noexcept {
 				if( this != &other ) {
@@ -245,6 +261,7 @@ namespace daw::sqlite {
 						sqlite3_reset( m_statement->get( ) );
 					}
 					m_statement = std::exchange( other.m_statement, nullptr );
+					m_done = other.m_done;
 				}
 				return *this;
 			}
@@ -261,6 +278,21 @@ namespace daw::sqlite {
 
 			[[nodiscard]] static iterator end( ) {
 				return { };
+			}
+
+			/***
+			 * @brief Step to the next row and read it, or std::nullopt once there
+			 * are no more.  Text and blob views are valid until the next step or
+			 * until this range is destroyed.  Use either next( ) or begin( ) on a
+			 * range, as both step the statement
+			 */
+			[[nodiscard]] std::optional<T> next( ) {
+				// Stepping again after SQLITE_DONE would restart the query
+				if( m_done or not m_statement->step( ) ) {
+					m_done = true;
+					return std::nullopt;
+				}
+				return m_statement->template row_as<T>( );
 			}
 		};
 		using row_range = basic_row_range<row_type>;
@@ -287,6 +319,24 @@ namespace daw::sqlite {
 			// step( ) already threw
 			sqlite3_reset( get( ) );
 			return basic_row_range<T>( *this );
+		}
+
+		/***
+		 * @brief Execute the statement to completion, discarding any rows.  The
+		 * statement is reset before and after, even if a step throws
+		 */
+		void exec_no_result( ) {
+			auto range = rows( );
+			for( auto it = range.begin( ); it != range.end( ); ++it ) {}
+		}
+
+		/***
+		 * @brief Execute the statement and report whether it returned a row.  The
+		 * statement is reset before and after
+		 */
+		[[nodiscard]] bool has_row( ) {
+			auto range = rows( );
+			return range.begin( ) != range.end( );
 		}
 	};
 } // namespace daw::sqlite

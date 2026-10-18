@@ -374,6 +374,69 @@ int main( ) {
 		daw::println( "typed_statement ok" );
 	}
 	{
+		// row_range::next reads one row per call and stays done once the rows run
+		// out, instead of restarting the query
+		auto stmt = daw::sqlite::typed_statement<int>(
+		  db, "SELECT 1 UNION ALL SELECT 2 ORDER BY 1;" );
+		auto rows = stmt.rows( );
+		daw_ensure( rows.next( ) == std::tuple{ 1 } );
+		daw_ensure( rows.next( ) == std::tuple{ 2 } );
+		daw_ensure( not rows.next( ) );
+		daw_ensure( not rows.next( ) );
+
+		auto objects = daw::sqlite::typed_statement<int, std::string>(
+		  db, "SELECT 5, 'five';" );
+		auto object_rows = objects.rows_as<RowType>( );
+		daw_ensure( ( object_rows.next( ) == RowType{ 5, "five" } ) );
+		daw_ensure( not object_rows.next( ) );
+
+		// has_row runs the query again each call, with the current bindings
+		auto filtered =
+		  daw::sqlite::typed_statement<int>( db, "SELECT 1 WHERE ?1;" );
+		filtered.bind( 1, daw::sqlite::cell_value( std::int64_t{ 1 } ) );
+		daw_ensure( filtered.has_row( ) );
+		filtered.bind( 1, daw::sqlite::cell_value( std::int64_t{ 0 } ) );
+		daw_ensure( not filtered.has_row( ) );
+		daw::println( "next/has_row ok" );
+	}
+	{
+		// bind_static, exec_no_result and changes
+		using daw::sqlite::types::blob_t;
+		using daw::sqlite::types::text_t;
+		db.exec_no_result( "CREATE TEMP TABLE extras ( t TEXT, b BLOB );" );
+		auto insert = daw::sqlite::typed_statement<>(
+		  db, "INSERT INTO extras VALUES ( ?1, ?2 );" );
+		auto const text = std::string( "static text" );
+		auto const bytes =
+		  std::array{ std::byte{ 1 }, std::byte{ 2 }, std::byte{ 0xFF } };
+		insert.bind_static( 1, text_t( text ) );
+		insert.bind_static( 2, blob_t( bytes.data( ), bytes.size( ) ) );
+		insert.exec_no_result( );
+		daw_ensure( db.changes( ) == 1 );
+		// Bindings survive the reset, so a second run inserts the same values
+		insert.exec_no_result( );
+
+		auto read = daw::sqlite::typed_statement<std::string, std::string>(
+		  db, "SELECT t, hex( b ) FROM extras;" );
+		auto count = 0;
+		for( auto const &[t, hex] : read.rows( ) ) {
+			daw_ensure( t == "static text" and hex == "0102FF" );
+			++count;
+		}
+		daw_ensure( count == 2 );
+
+		// Empty values bind as empty, not NULL
+		auto is_null = daw::sqlite::typed_statement<bool, bool>(
+		  db, "SELECT ?1 IS NULL, ?2 IS NULL;" );
+		is_null.bind_static( 1, text_t( ) );
+		is_null.bind_static( 2, blob_t( ) );
+		daw_ensure( ( is_null.rows( ).next( ) == std::tuple{ false, false } ) );
+
+		db.exec_no_result( "DELETE FROM extras;" );
+		daw_ensure( db.changes( ) == 2 );
+		daw::println( "bind_static/exec_no_result/changes ok" );
+	}
+	{
 		// typed_statement::row_as constructs a domain type from the current row
 		auto stmt = daw::sqlite::typed_statement<std::optional<std::int64_t>,
 		                                         std::string,

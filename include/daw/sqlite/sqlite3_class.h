@@ -17,6 +17,7 @@
 #include <daw/daw_take.h>
 #include <daw/vector.h>
 
+#include <cstdint>
 #include <exception>
 #include <filesystem>
 #include <memory>
@@ -66,6 +67,12 @@ namespace daw::sqlite {
 		query_iterator exec( prepared_statement statement );
 		query_iterator exec( shared_prepared_statement statement );
 		void exec_no_result( daw::string_view sql );
+
+		/***
+		 * @brief Rows changed by the most recent INSERT, UPDATE or DELETE on this
+		 * connection
+		 */
+		[[nodiscard]] std::int64_t changes( );
 
 		template<typename... Params>
 		requires( Parameters<Params...> ) //

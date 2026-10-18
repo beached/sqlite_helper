@@ -88,6 +88,42 @@ namespace daw::sqlite {
 				}
 		}
 
+		// SQLITE_STATIC: sqlite keeps the pointer instead of copying the data
+		void bind_static_value( sqlite3_stmt *stmt, std::size_t index,
+		                        types::text_t value ) {
+			assert( index <= std::numeric_limits<int>::max( ) );
+			// A null pointer would bind NULL instead of an empty string
+			auto const *first = value.data( ) ? value.data( ) : "";
+			auto rc = sqlite3_bind_text64( stmt,
+			                               static_cast<int>( index ),
+			                               first,
+			                               static_cast<sqlite3_uint64>( value.size( ) ),
+			                               SQLITE_STATIC,
+			                               SQLITE_UTF8 );
+			if( DAW_UNLIKELY( rc != SQLITE_OK ) )
+				[[unlikely]] {
+					throw_sqlite3_exception( rc );
+				}
+		}
+
+		void bind_static_value( sqlite3_stmt *stmt, std::size_t index,
+		                        types::blob_t value ) {
+			assert( index <= std::numeric_limits<int>::max( ) );
+			auto const idx = static_cast<int>( index );
+			// A null pointer would bind NULL instead of an empty blob
+			auto rc = value.empty( )
+			            ? sqlite3_bind_zeroblob64( stmt, idx, 0 )
+			            : sqlite3_bind_blob64( stmt,
+			                                   idx,
+			                                   value.data( ),
+			                                   static_cast<sqlite3_uint64>( value.size( ) ),
+			                                   SQLITE_STATIC );
+			if( DAW_UNLIKELY( rc != SQLITE_OK ) )
+				[[unlikely]] {
+					throw_sqlite3_exception( rc );
+				}
+		}
+
 		void bind_null( sqlite3_stmt *stmt, std::size_t index ) {
 			assert( index <= std::numeric_limits<int>::max( ) );
 			auto rc = sqlite3_bind_null( stmt, static_cast<int>( index ) );
@@ -174,6 +210,14 @@ namespace daw::sqlite {
 
 	void prepared_statement::bind( std::size_t index ) {
 		bind_null( m_statement.get( ), index );
+	}
+
+	void prepared_statement::bind_static( std::size_t index, types::text_t value ) {
+		bind_static_value( m_statement.get( ), index, value );
+	}
+
+	void prepared_statement::bind_static( std::size_t index, types::blob_t value ) {
+		bind_static_value( m_statement.get( ), index, value );
 	}
 
 	column_type prepared_statement::get_column_type( std::size_t column ) {
@@ -297,6 +341,14 @@ namespace daw::sqlite {
 
 	void shared_prepared_statement::bind( std::size_t index ) {
 		bind_null( m_statement.get( ), index );
+	}
+
+	void shared_prepared_statement::bind_static( std::size_t index, types::text_t value ) {
+		bind_static_value( m_statement.get( ), index, value );
+	}
+
+	void shared_prepared_statement::bind_static( std::size_t index, types::blob_t value ) {
+		bind_static_value( m_statement.get( ), index, value );
 	}
 
 	column_type shared_prepared_statement::get_column_type( std::size_t column ) {

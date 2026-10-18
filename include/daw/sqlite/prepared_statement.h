@@ -363,6 +363,14 @@ namespace daw::sqlite {
 		void bind( std::size_t index, cell_value const &value );
 		void bind( std::size_t index ); // bind a null to that value
 
+		/***
+		 * @brief Bind text or a blob without copying it.  The data must stay
+		 * valid until the parameter is bound again or the statement is destroyed;
+		 * reset( ) keeps bindings, so it outlives one execution
+		 */
+		void bind_static( std::size_t index, types::text_t value );
+		void bind_static( std::size_t index, types::blob_t value );
+
 		explicit operator bool( ) const {
 			return static_cast<bool>( m_statement );
 		}
@@ -435,6 +443,14 @@ namespace daw::sqlite {
 
 		void bind( std::size_t index, cell_value const &value );
 		void bind( std::size_t index ); // bind a null to that value
+
+		/***
+		 * @brief Bind text or a blob without copying it.  The data must stay
+		 * valid until the parameter is bound again or the statement is destroyed;
+		 * reset( ) keeps bindings, so it outlives one execution
+		 */
+		void bind_static( std::size_t index, types::text_t value );
+		void bind_static( std::size_t index, types::blob_t value );
 
 		explicit operator bool( ) const {
 			return static_cast<bool>( m_statement );
