@@ -38,4 +38,13 @@ namespace daw::sqlite {
 	} // namespace se_impl
 	using unique_sqlite_char_ptr =
 	  daw::unique_ptr<char, se_impl::sqlite_char_ptr_deleter>;
+
+	[[noreturn]] DAW_ATTRIB_NOINLINE void
+	throw_sqlite3_exception( std::string msg );
+
+	[[noreturn]] DAW_ATTRIB_NOINLINE void
+	throw_sqlite3_exception( int rc, std::string msg );
+
+	[[noreturn]] DAW_ATTRIB_NOINLINE void
+	throw_sqlite3_exception( int rc );
 } // namespace daw::sqlite

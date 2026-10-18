@@ -128,8 +128,9 @@ namespace daw::sqlite {
 				if constexpr( std::same_as<T, bool> ) {
 					return value != 0;
 				} else {
-					if( not std::in_range<T>( value ) ) {
-						throw sqlite3_exception( "Column value out of range for type" );
+					if( DAW_UNLIKELY( not std::in_range<T>( value ) ) ) {
+						[[unlikely]] throw_sqlite3_exception(
+						  "Column value out of range for type" );
 					}
 					return static_cast<T>( value );
 				}
@@ -148,7 +149,7 @@ namespace daw::sqlite {
 					if( is_null( stmt, column ) ) {
 						return std::nullopt;
 					}
-					throw sqlite3_exception( SQLITE_NOMEM );
+					[[unlikely]] throw_sqlite3_exception( SQLITE_NOMEM );
 				}
 				auto const size =
 				  static_cast<std::size_t>( sqlite3_column_bytes( stmt, column ) );
@@ -189,8 +190,8 @@ namespace daw::sqlite {
 			} else {
 				static_assert( is_column_value_v<T>, "Unsupported column type" );
 				auto result = read_nullable<T>( stmt, column );
-				if( not result ) {
-					throw sqlite3_exception(
+				if( DAW_UNLIKELY( not result ) ) {
+					[[unlikely]] throw_sqlite3_exception(
 					  "Unexpected NULL in column, use std::optional" );
 				}
 				return *std::move( result );
@@ -205,17 +206,18 @@ namespace daw::sqlite {
 		class row_access {
 			[[nodiscard]] sqlite3_stmt *checked_handle( ) {
 				auto &self = static_cast<Statement &>( *this );
-				if( not self.is_good( ) ) {
-					throw sqlite3_exception( "Attempt to use an invalid statement" );
+				if( DAW_UNLIKELY( not self.is_good( ) ) ) {
+					throw_sqlite3_exception( "Attempt to use an invalid statement" );
 				}
 				return self.get( );
 			}
 
 			[[nodiscard]] sqlite3_stmt *checked_handle( std::size_t column_count ) {
 				auto *stmt = checked_handle( );
-				if( static_cast<std::size_t>( sqlite3_column_count( stmt ) ) <
-				    column_count ) {
-					throw sqlite3_exception( "Column specified is out of range" );
+				if( DAW_UNLIKELY( static_cast<std::size_t>(
+				                    sqlite3_column_count( stmt ) ) < column_count ) ) {
+					[[unlikely]] throw_sqlite3_exception(
+					  "Column specified is out of range" );
 				}
 				return stmt;
 			}

@@ -70,40 +70,45 @@ namespace daw::sqlite {
 
 		[[nodiscard]] constexpr types::real_t const &get_float( ) const {
 			auto *ptr = std::get_if<types::real_t>( &m_value );
-			if( not ptr ) {
-				throw sqlite3_exception( "Cell Value is not of type Real" );
+			if( DAW_UNLIKELY( not ptr ) ) {
+				[[unlikely]] throw_sqlite3_exception(
+				  "Cell Value is not of type Real" );
 			}
 			return *ptr;
 		}
 
 		[[nodiscard]] constexpr bool get_bool( ) const {
 			auto *ptr = std::get_if<types::integer_t>( &m_value );
-			if( not ptr ) {
-				throw sqlite3_exception( "Cell Value is not of type Integer" );
+			if( DAW_UNLIKELY( not ptr ) ) {
+				[[unlikely]] throw_sqlite3_exception(
+				  "Cell Value is not of type Integer" );
 			}
 			return static_cast<bool>( *ptr );
 		}
 
 		[[nodiscard]] constexpr types::integer_t const &get_integer( ) const {
 			auto *ptr = std::get_if<types::integer_t>( &m_value );
-			if( not ptr ) {
-				throw sqlite3_exception( "Cell Value is not of type Integer" );
+			if( DAW_UNLIKELY( not ptr ) ) {
+				[[unlikely]] throw_sqlite3_exception(
+				  "Cell Value is not of type Integer" );
 			}
 			return *ptr;
 		}
 
 		[[nodiscard]] constexpr types::text_t const &get_text( ) const {
 			auto *ptr = std::get_if<types::text_t>( &m_value );
-			if( not ptr ) {
-				throw sqlite3_exception( "Cell Value is not of type Text" );
+			if( DAW_UNLIKELY( not ptr ) ) {
+				[[unlikely]] throw_sqlite3_exception(
+				  "Cell Value is not of type Text" );
 			}
 			return *ptr;
 		}
 
 		[[nodiscard]] constexpr types::blob_t const &get_blob( ) const {
 			auto *ptr = std::get_if<types::blob_t>( &m_value );
-			if( not ptr ) {
-				throw sqlite3_exception( "Cell Value is not of type Blob" );
+			if( DAW_UNLIKELY( not ptr ) ) {
+				[[unlikely]] throw_sqlite3_exception(
+				  "Cell Value is not of type Blob" );
 			}
 			return *ptr;
 		}

@@ -47,8 +47,8 @@ namespace daw::sqlite {
 
 		void validate_columns( ) {
 			auto const count = m_statement.get_column_count( );
-			if( count != sizeof...( Columns ) ) {
-				throw sqlite3_exception(
+			if( DAW_UNLIKELY( count != sizeof...( Columns ) ) ) [[unlikely]] {
+				throw_sqlite3_exception(
 				  "typed_statement declares " + std::to_string( sizeof...( Columns ) ) +
 				  " columns but the statement returns " + std::to_string( count ) );
 			}
@@ -108,8 +108,8 @@ namespace daw::sqlite {
 			if( rc == SQLITE_DONE ) {
 				return false;
 			}
-			throw sqlite3_exception( rc,
-			                         sqlite3_errmsg( sqlite3_db_handle( get( ) ) ) );
+			[[unlikely]] throw_sqlite3_exception(
+			  rc, sqlite3_errmsg( sqlite3_db_handle( get( ) ) ) );
 		}
 
 		/***

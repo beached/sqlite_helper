@@ -65,6 +65,7 @@ namespace daw::sqlite {
 
 		query_iterator exec( prepared_statement statement );
 		query_iterator exec( shared_prepared_statement statement );
+		void exec_no_result( daw::string_view sql );
 
 		template<typename... Params>
 		requires( Parameters<Params...> ) //

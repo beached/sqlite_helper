@@ -40,9 +40,10 @@ namespace daw::sqlite {
 			                              static_cast<unsigned>( flags ),
 			                              &st,
 			                              nullptr );
-			if( rc != SQLITE_OK ) {
-				throw sqlite3_exception( rc, sqlite3_errmsg( db.get_handle( ) ) );
-			}
+			if( DAW_UNLIKELY( rc != SQLITE_OK ) )
+				[[unlikely]] {
+					throw_sqlite3_exception( rc, sqlite3_errmsg( db.get_handle( ) ) );
+				}
 			return st;
 		}
 
@@ -81,17 +82,19 @@ namespace daw::sqlite {
 			  [&]( cell_value::null_cell_t ) {
 				  return sqlite3_bind_null( stmt, idx );
 			  } );
-			if( rc != SQLITE_OK ) {
-				throw sqlite3_exception( rc );
-			}
+			if( DAW_UNLIKELY( rc != SQLITE_OK ) )
+				[[unlikely]] {
+					throw_sqlite3_exception( rc );
+				}
 		}
 
 		void bind_null( sqlite3_stmt *stmt, std::size_t index ) {
 			assert( index <= std::numeric_limits<int>::max( ) );
 			auto rc = sqlite3_bind_null( stmt, static_cast<int>( index ) );
-			if( rc != SQLITE_OK ) {
-				throw sqlite3_exception( rc );
-			}
+			if( DAW_UNLIKELY( rc != SQLITE_OK ) )
+				[[unlikely]] {
+					throw_sqlite3_exception( rc );
+				}
 		}
 	} // namespace
 
@@ -101,12 +104,14 @@ namespace daw::sqlite {
 
 	namespace {
 		inline void validate( prepared_statement &statement, std::size_t column ) {
-			if( not statement.is_good( ) ) {
-				throw sqlite3_exception( "Attempt to use an invalid statement" );
-			}
-			if( statement.get_column_count( ) <= column ) {
-				throw sqlite3_exception( "Column specified is out of range" );
-			}
+			if( DAW_UNLIKELY( not statement.is_good( ) ) )
+				[[unlikely]] {
+					throw_sqlite3_exception( "Attempt to use an invalid statement" );
+				}
+			if( DAW_UNLIKELY( statement.get_column_count( ) <= column ) )
+				[[unlikely]] {
+					throw_sqlite3_exception( "Column specified is out of range" );
+				}
 		}
 	} // namespace
 
@@ -153,9 +158,10 @@ namespace daw::sqlite {
 
 	void prepared_statement::reset( ) {
 		auto rc = sqlite3_reset( m_statement.get( ) );
-		if( rc != SQLITE_OK ) {
-			throw sqlite3_exception( rc );
-		}
+		if( DAW_UNLIKELY( rc != SQLITE_OK ) )
+			[[unlikely]] {
+				throw_sqlite3_exception( rc );
+			}
 	}
 
 	void prepared_statement::reset_to_default_init( ) {
@@ -215,11 +221,14 @@ namespace daw::sqlite {
 	namespace {
 		inline void validate( shared_prepared_statement &statement,
 		                      std::size_t column ) {
-			if( not statement.is_good( ) ) {
-				throw sqlite3_exception( "Attempt to use an invalid statement" );
-			} else if( statement.get_column_count( ) <= column ) {
-				throw sqlite3_exception( "Column specified is out of range" );
-			}
+			if( DAW_UNLIKELY( not statement.is_good( ) ) )
+				[[unlikely]] {
+					throw_sqlite3_exception( "Attempt to use an invalid statement" );
+				}
+			if( DAW_UNLIKELY( statement.get_column_count( ) <= column ) )
+				[[unlikely]] {
+					throw_sqlite3_exception( "Column specified is out of range" );
+				}
 		}
 	} // namespace
 
@@ -271,9 +280,10 @@ namespace daw::sqlite {
 
 	void shared_prepared_statement::reset( ) {
 		auto rc = sqlite3_reset( m_statement.get( ) );
-		if( rc != SQLITE_OK ) {
-			throw sqlite3_exception( rc );
-		}
+		if( DAW_UNLIKELY( rc != SQLITE_OK ) )
+			[[unlikely]] {
+				throw_sqlite3_exception( rc );
+			}
 	}
 
 	void shared_prepared_statement::reset_to_default_init( ) {

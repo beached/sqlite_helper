@@ -54,6 +54,20 @@ namespace daw::sqlite {
 	sqlite3_exception::sqlite3_exception( std::string message )
 	  : m_message( std::move( message ) ) {}
 
+	[[noreturn]] DAW_ATTRIB_NOINLINE void
+	throw_sqlite3_exception( std::string msg ) {
+		throw sqlite3_exception( std::move( msg ) );
+	}
+
+	[[noreturn]] DAW_ATTRIB_NOINLINE void
+	throw_sqlite3_exception( int rc, std::string msg ) {
+		throw sqlite3_exception( rc, std::move( msg ) );
+	}
+
+	[[noreturn]] DAW_ATTRIB_NOINLINE void throw_sqlite3_exception( int rc ) {
+		throw sqlite3_exception( rc );
+	}
+
 	void database::open( std::filesystem::path const &filename, int flags ) {
 		// sqlite expects UTF-8 filenames on every platform
 		auto const fname = filename.u8string( );
@@ -68,7 +82,7 @@ namespace daw::sqlite {
 			  "Could not open database {}: {}",
 			  filename.string( ),
 			  ( ptr ? sqlite3_errmsg( ptr.get( ) ) : sqlite3_errstr( rc ) ) );
-			throw sqlite3_exception( rc, std::move( message ) );
+			throw_sqlite3_exception( rc, std::move( message ) );
 		}
 		m_db = std::move( ptr );
 		m_is_open = true;
@@ -126,6 +140,20 @@ namespace daw::sqlite {
 	query_iterator database::exec( shared_prepared_statement statement ) {
 		assert( m_db );
 		return query_iterator( std::move( statement ) );
+	}
+
+	void database::exec_no_result( daw::string_view sql ) {
+		auto err = daw::sqlite::unique_sqlite_char_ptr( );
+		auto const r = sqlite3_exec( get_handle( ),
+		                             sql.get_c_str( ).c_str( ),
+		                             nullptr,
+		                             nullptr,
+		                             daw::out_ptr( err ) );
+		if( DAW_UNLIKELY( r != SQLITE_OK ) )
+			[[unlikely]] {
+				auto msg = std::string( err ? err.get( ) : "unknown error" );
+				throw_sqlite3_exception( msg );
+			}
 	}
 
 	database::database( std::filesystem::path const &filename, int flags ) {
